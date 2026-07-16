@@ -1,0 +1,56 @@
+.page-issue-popover {
+  position: absolute;
+  z-index: 8;
+  width: min(320px, calc(100% - 24px));
+  border-radius: 4px;
+  background: #fff;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: page-issue-popover-in 0.22s ease-out;
+}
+
+.page-issue-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.page-issue-popover__title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #666;
+}
+
+.page-issue-popover__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  color: #999;
+  transition: background 0.2s, color 0.2s;
+}
+
+.page-issue-popover__close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+@keyframes page-issue-popover-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

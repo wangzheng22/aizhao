@@ -1,0 +1,60 @@
+.editable-suggestion-wrap {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #f9fafb;
+  box-sizing: border-box;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.editable-suggestion-wrap--focused {
+  background: #edf3ff;
+  border-color: #3671ff;
+}
+
+.editable-suggestion-grow {
+  display: grid;
+  width: 100%;
+}
+
+.editable-suggestion,
+.editable-suggestion-shadow {
+  grid-area: 1 / 1 / 2 / 2;
+  width: 100%;
+  min-height: 22px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-family: inherit;
+  word-break: break-all;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+}
+
+.editable-suggestion-shadow {
+  visibility: hidden;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+
+.editable-suggestion {
+  display: block;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  color: #262626;
+  cursor: text;
+}
+
+.editable-suggestion:focus {
+  outline: none;
+}
+
+.editable-suggestion::placeholder {
+  color: #bfbfbf;
+}

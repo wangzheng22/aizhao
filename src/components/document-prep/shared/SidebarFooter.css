@@ -1,0 +1,125 @@
+.sidebar-footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px 10px 16px;
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.sidebar-footer__back {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  line-height: 22px;
+  transition: border-color 0.2s;
+}
+
+.sidebar-footer__back:hover {
+  border-color: #3671ff;
+  color: #3671ff;
+}
+
+.sidebar-footer__next {
+  flex: 1;
+  height: 34px;
+  border-radius: 2px;
+  background: #3671ff;
+  border: 1px solid #1890ff;
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.sidebar-footer__next:hover:not(:disabled) {
+  background: #2d62e0;
+}
+
+.sidebar-footer__next:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidebar-footer__generate {
+  flex: 1;
+  height: 34px;
+  border-radius: 2px;
+  background: linear-gradient(
+    96deg,
+    #f376fe 11.43%,
+    #4b77ff 35.32%,
+    #5883ff 78.44%,
+    #2bfad0 120.2%
+  );
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+  transition: opacity 0.2s;
+}
+
+.sidebar-footer__generate:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.sidebar-footer__generate:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidebar-footer__actions {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.sidebar-footer__regenerate,
+.sidebar-footer__update {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.sidebar-footer__regenerate {
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  color: #333;
+}
+
+.sidebar-footer__regenerate:hover:not(:disabled) {
+  border-color: #3671ff;
+  color: #3671ff;
+}
+
+.sidebar-footer__regenerate:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidebar-footer__update {
+  border: 1px solid #1890ff;
+  background: #3671ff;
+  color: #fff;
+}
+
+.sidebar-footer__update:hover:not(:disabled) {
+  background: #2d62e0;
+}
+
+.sidebar-footer__update:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

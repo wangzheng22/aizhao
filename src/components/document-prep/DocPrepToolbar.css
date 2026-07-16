@@ -1,0 +1,123 @@
+.doc-prep-toolbar {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  height: 41px;
+  background: #fff;
+  box-shadow: 0 4px 4px rgba(109, 107, 107, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.doc-prep-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-prep-toolbar__tabs {
+  display: flex;
+  height: 31px;
+}
+
+.doc-prep-toolbar__tab {
+  height: 31px;
+  padding: 0 16px;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  margin-left: -1px;
+  transition: background 0.2s;
+}
+
+.doc-prep-toolbar__tab:first-child {
+  margin-left: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.doc-prep-toolbar__tab:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.doc-prep-toolbar__tab--active {
+  background: #f0f1f3;
+  position: relative;
+  z-index: 1;
+}
+
+.doc-prep-toolbar__tab--disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+
+.doc-prep-toolbar__tab--disabled:hover {
+  background: #fff;
+}
+
+.doc-prep-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-prep-toolbar__stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 31px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: border-color 0.2s;
+}
+
+.doc-prep-toolbar__stat:hover,
+.doc-prep-toolbar__stat--active {
+  border-color: #3671ff;
+}
+
+.doc-prep-toolbar__stat--active {
+  background: #edf3ff;
+}
+
+.doc-prep-toolbar__stat--active .doc-prep-toolbar__stat-value {
+  color: #3671ff;
+  font-weight: 700;
+}
+
+.doc-prep-toolbar__stat-value {
+  color: #333;
+}
+
+.doc-prep-toolbar__stat--muted {
+  color: #bbb;
+  cursor: default;
+}
+
+.doc-prep-toolbar__stat--muted .doc-prep-toolbar__stat-value {
+  color: #bbb;
+}
+
+.doc-prep-toolbar__stat--muted:hover {
+  border-color: #e5e5e5;
+  background: #fff;
+}
+
+.doc-prep-toolbar__stat:disabled {
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .doc-prep-toolbar__right {
+    display: none;
+  }
+}

@@ -1,0 +1,237 @@
+.pdf-viewer {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  background: transparent;
+}
+
+.pdf-viewer__pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 56px 32px 48px;
+}
+
+.pdf-page {
+  position: relative;
+  width: fit-content;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: visible;
+}
+
+.pdf-page__surface {
+  position: relative;
+  overflow: visible;
+}
+
+.pdf-page__canvas {
+  display: block;
+  position: relative;
+  z-index: 1;
+  /* Prevent browsers from applying unexpected orientation to the bitmap */
+  image-orientation: none;
+}
+
+.field-highlight {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.page-issue-anchor {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.field-highlight__box {
+  position: absolute;
+  inset: -1px;
+  border-radius: 2px;
+}
+
+/* 完整性：红色高亮 */
+.field-highlight--completeness .field-highlight__box {
+  background: rgba(232, 47, 47, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(232, 47, 47, 0.65);
+}
+
+.field-highlight--completeness.field-highlight--active .field-highlight__box {
+  background: rgba(232, 47, 47, 0.3);
+  box-shadow:
+    inset 0 0 0 1.5px #e82f2f,
+    0 0 0 2px rgba(232, 47, 47, 0.2);
+}
+
+.field-highlight--completeness.field-highlight--focused .field-highlight__box {
+  animation: field-highlight-locate-completeness 1.5s ease-out;
+}
+
+@keyframes field-highlight-locate-completeness {
+  0% {
+    background: rgba(232, 47, 47, 0.3);
+    box-shadow:
+      inset 0 0 0 2px #e82f2f,
+      0 0 0 0 rgba(232, 47, 47, 0.4),
+      0 0 12px rgba(232, 47, 47, 0.24);
+    transform: scale(1.04);
+  }
+
+  35% {
+    background: rgba(232, 47, 47, 0.3);
+    box-shadow:
+      inset 0 0 0 1.5px #e82f2f,
+      0 0 0 8px rgba(232, 47, 47, 0),
+      0 0 14px rgba(232, 47, 47, 0.18);
+    transform: scale(1.01);
+  }
+
+  100% {
+    background: rgba(232, 47, 47, 0.3);
+    box-shadow:
+      inset 0 0 0 1.5px #e82f2f,
+      0 0 0 2px rgba(232, 47, 47, 0.2);
+    transform: scale(1);
+  }
+}
+
+/* 智能审：紫色高亮 */
+.field-highlight--smart-review .field-highlight__box {
+  background: rgba(163, 18, 208, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(163, 18, 208, 0.65);
+}
+
+.field-highlight--smart-review.field-highlight--active .field-highlight__box {
+  background: rgba(163, 18, 208, 0.3);
+  box-shadow:
+    inset 0 0 0 1.5px #a312d0,
+    0 0 0 2px rgba(163, 18, 208, 0.2);
+}
+
+.field-highlight--smart-review.field-highlight--focused .field-highlight__box {
+  animation: field-highlight-locate-smart-review 1.5s ease-out;
+}
+
+@keyframes field-highlight-locate-smart-review {
+  0% {
+    background: rgba(163, 18, 208, 0.3);
+    box-shadow:
+      inset 0 0 0 2px #a312d0,
+      0 0 0 0 rgba(163, 18, 208, 0.4),
+      0 0 12px rgba(163, 18, 208, 0.24);
+    transform: scale(1.04);
+  }
+
+  35% {
+    background: rgba(163, 18, 208, 0.3);
+    box-shadow:
+      inset 0 0 0 1.5px #a312d0,
+      0 0 0 8px rgba(163, 18, 208, 0),
+      0 0 14px rgba(163, 18, 208, 0.18);
+    transform: scale(1.01);
+  }
+
+  100% {
+    background: rgba(163, 18, 208, 0.3);
+    box-shadow:
+      inset 0 0 0 1.5px #a312d0,
+      0 0 0 2px rgba(163, 18, 208, 0.2);
+    transform: scale(1);
+  }
+}
+
+.pdf-page__text-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  line-height: 1;
+  user-select: text;
+  -webkit-user-select: text;
+  pointer-events: auto;
+}
+
+.pdf-page__text-layer span {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.pdf-page__text-layer ::selection,
+.pdf-page__text-layer span::selection {
+  background: transparent;
+  color: transparent;
+}
+
+.text-selection-highlight--in-page {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  background: rgba(82, 196, 26, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(82, 196, 26, 0.75);
+  border-radius: 2px;
+}
+
+.field-highlight--comment .field-highlight__box {
+  background: rgba(82, 196, 26, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(82, 196, 26, 0.65);
+}
+
+.field-highlight--comment.field-highlight--active .field-highlight__box {
+  background: rgba(82, 196, 26, 0.28);
+  box-shadow:
+    inset 0 0 0 1.5px #52c41a,
+    0 0 0 2px rgba(82, 196, 26, 0.18);
+}
+
+.field-highlight--comment.field-highlight--focused .field-highlight__box {
+  animation: field-highlight-locate-comment 1.5s ease-out;
+}
+
+@keyframes field-highlight-locate-comment {
+  0% {
+    background: rgba(82, 196, 26, 0.28);
+    box-shadow:
+      inset 0 0 0 2px #52c41a,
+      0 0 0 0 rgba(82, 196, 26, 0.35),
+      0 0 12px rgba(82, 196, 26, 0.2);
+    transform: scale(1.04);
+  }
+
+  100% {
+    background: rgba(82, 196, 26, 0.22);
+    box-shadow:
+      inset 0 0 0 1.5px #52c41a,
+      0 0 0 2px rgba(82, 196, 26, 0.18);
+    transform: scale(1);
+  }
+}
+
+.pdf-page__placeholder {
+  width: 100%;
+  background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+}
+
+.pdf-page__label {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #999;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.pdf-page:hover .pdf-page__label {
+  opacity: 1;
+}

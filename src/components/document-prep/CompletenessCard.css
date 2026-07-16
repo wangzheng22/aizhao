@@ -1,0 +1,115 @@
+.completeness-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.completeness-card--interactive {
+  cursor: pointer;
+}
+
+.completeness-card--interactive:hover:not(.completeness-card--active) {
+  border-color: #e8e8e8;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.completeness-card--active {
+  border: 2px solid #1890ff;
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.16);
+}
+
+.completeness-card--unlinked {
+  opacity: 0.72;
+}
+
+.completeness-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+
+.completeness-card__tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.completeness-card__tag--missing,
+.completeness-card__tag--risk {
+  color: #fff;
+  background: #ff4d4f;
+}
+
+.completeness-card__tag--format {
+  color: #fff;
+  background: #1890ff;
+}
+
+.completeness-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #262626;
+}
+
+.completeness-card__divider {
+  height: 1px;
+  margin: 10px 14px 0;
+  background: #f0f0f0;
+}
+
+.completeness-card__section {
+  padding: 12px 14px 0;
+}
+
+.completeness-card__section--last {
+  padding-bottom: 14px;
+}
+
+.completeness-card__section:last-child {
+  padding-bottom: 14px;
+}
+
+.completeness-card__label {
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8c8c8c;
+  margin-bottom: 8px;
+}
+
+.completeness-card__excerpt-block {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #fde8e8;
+}
+
+.completeness-card__excerpt {
+  font-size: 14px;
+  line-height: 22px;
+  color: #262626;
+  word-break: break-all;
+}
+
+.completeness-card__suggestion-block {
+  border-radius: 4px;
+}
+
+.completeness-card__suggestion-block--static {
+  padding: 8px 10px;
+  background: #f9fafb;
+}
+
+.completeness-card__suggestion {
+  font-size: 14px;
+  line-height: 22px;
+  color: #262626;
+  word-break: break-all;
+}

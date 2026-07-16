@@ -1,0 +1,138 @@
+.doc-prep-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 60px;
+  background: #3671ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  gap: 24px;
+}
+
+.doc-prep-header__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 26px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-prep-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.doc-prep-header__saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+  color: #fff;
+  white-space: nowrap;
+  margin-right: 8px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+}
+
+.doc-prep-header__saved--exiting {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+.doc-prep-header__saved--entering {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.doc-prep-header__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.doc-prep-header__btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.doc-prep-header__btn-icon {
+  display: block;
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.doc-prep-header__btn-icon--save,
+.doc-prep-header__btn-icon--export {
+  width: 16px;
+  height: 16px;
+}
+
+.doc-prep-header__btn--wide {
+  min-width: 109px;
+  justify-content: space-between;
+}
+
+.doc-prep-header__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  color: #fff;
+}
+
+.doc-prep-header__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6dacff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.doc-prep-header__username {
+  font-size: 14px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .doc-prep-header__saved {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .doc-prep-header__btn:not(.doc-prep-header__btn--wide) {
+    padding: 0 8px;
+  }
+
+  .doc-prep-header__btn span,
+  .doc-prep-header__username {
+    display: none;
+  }
+}

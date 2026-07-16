@@ -1,0 +1,112 @@
+.template-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 16px;
+}
+
+.template-panel__heading {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  color: #333;
+  margin: 12px 0 8px;
+}
+
+.template-panel__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  margin-bottom: 10px;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+}
+
+.template-panel__search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #333;
+  border: none;
+  background: transparent;
+}
+
+.template-panel__search-input:focus {
+  outline: none;
+}
+
+.template-panel__search-input::placeholder {
+  color: #bfbfbf;
+}
+
+.template-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-panel__card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.template-panel__card:hover {
+  border-color: #3671ff;
+}
+
+.template-panel__card--selected {
+  border-color: #3671ff;
+  box-shadow: 0 0 0 1px rgba(54, 113, 255, 0.15);
+}
+
+.template-panel__radio {
+  flex-shrink: 0;
+  margin-top: 4px;
+  accent-color: #3671ff;
+}
+
+.template-panel__card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-panel__card-title {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.template-panel__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.template-panel__tag {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #fa8c16;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 2px;
+}
+
+.template-panel__card-source {
+  font-size: 14px;
+  line-height: 22px;
+  color: #999;
+}

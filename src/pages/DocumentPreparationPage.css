@@ -1,0 +1,20 @@
+.doc-prep-page {
+  min-height: 100vh;
+  background: #e8eaee;
+}
+
+.doc-prep-page__body {
+  display: flex;
+  padding-top: 101px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .doc-prep-page__body {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 101px);
+    overflow: visible;
+  }
+}

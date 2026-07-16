@@ -1,0 +1,185 @@
+.doc-prep-sidebar {
+  width: 0;
+  flex-shrink: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid transparent;
+  transition: width 0.25s ease, border-color 0.25s ease;
+}
+
+.doc-prep-sidebar--open {
+  width: 400px;
+  border-right-color: #e5e5e5;
+}
+
+.doc-prep-sidebar--collapsed {
+  width: 0;
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.doc-prep-sidebar__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.doc-prep-sidebar__tip {
+  display: flex;
+  gap: 8px;
+  padding: 11px 10px 0;
+  flex-shrink: 0;
+}
+
+.doc-prep-sidebar__tip-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.doc-prep-sidebar__tip-text {
+  font-size: 14px;
+  line-height: 22px;
+  color: #333;
+}
+
+.doc-prep-sidebar__sections {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-prep-sidebar__card {
+  border: 1px solid #e5e5e5;
+  border-radius: 3px;
+  background: #fff;
+  padding: 15px 12px;
+}
+
+.doc-prep-sidebar__card--tall {
+  padding-bottom: 12px;
+}
+
+.doc-prep-sidebar__card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doc-prep-sidebar__card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-prep-sidebar__card-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.doc-prep-sidebar__card-desc {
+  font-size: 12px;
+  line-height: 18px;
+  color: #999;
+}
+
+.doc-prep-sidebar__upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  background: #3671ff;
+  border: 1px solid #1890ff;
+  border-radius: 2px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+  transition: background 0.2s;
+}
+
+.doc-prep-sidebar__upload-btn:hover {
+  background: #2d62e0;
+}
+
+.doc-prep-sidebar__input {
+  display: none;
+}
+
+.doc-prep-sidebar__file-list {
+  list-style: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-prep-sidebar__file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 10px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+.doc-prep-sidebar__file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-prep-sidebar__file-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  color: #999;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.doc-prep-sidebar__file-delete:hover {
+  color: #3671ff;
+  background: rgba(54, 113, 255, 0.08);
+}
+
+.doc-prep-sidebar__file-delete-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .doc-prep-sidebar--open {
+    width: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .doc-prep-sidebar--open {
+    width: 100%;
+    max-height: 40vh;
+  }
+}

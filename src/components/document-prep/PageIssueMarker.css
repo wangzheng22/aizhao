@@ -1,0 +1,98 @@
+.page-issue-marker {
+  position: absolute;
+  right: 5px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  transition: width 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.page-issue-marker__label {
+  pointer-events: none;
+}
+
+.page-issue-marker--completeness,
+.page-issue-marker--missing {
+  background: linear-gradient(180deg, #ff7875 0%, #ff4d4f 100%);
+}
+
+.page-issue-marker--smart-review,
+.page-issue-marker--smart-risk {
+  background: linear-gradient(180deg, #9254de 0%, #722ed1 100%);
+}
+
+.page-issue-marker--smart-optimization {
+  background: linear-gradient(180deg, #b37feb 0%, #9254de 100%);
+}
+
+.page-issue-marker--risk {
+  background: linear-gradient(180deg, #ff7875 0%, #ff4d4f 100%);
+}
+
+.page-issue-marker--format {
+  background: linear-gradient(180deg, #597ef7 0%, #3671ff 100%);
+}
+
+.page-issue-marker:hover,
+.page-issue-marker--active {
+  width: 32px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+}
+
+.page-issue-marker--active {
+  transform: translateY(-50%) scale(1.04);
+}
+
+.page-issue-marker--active.page-issue-marker--completeness,
+.page-issue-marker--active.page-issue-marker--missing {
+  background: linear-gradient(180deg, #ff4d4f 0%, #cf1322 100%);
+}
+
+.page-issue-marker--active.page-issue-marker--smart-review,
+.page-issue-marker--active.page-issue-marker--smart-risk {
+  background: linear-gradient(180deg, #722ed1 0%, #531dab 100%);
+}
+
+.page-issue-marker--active.page-issue-marker--smart-optimization {
+  background: linear-gradient(180deg, #9254de 0%, #722ed1 100%);
+}
+
+.page-issue-marker--active.page-issue-marker--risk {
+  background: linear-gradient(180deg, #ff4d4f 0%, #cf1322 100%);
+}
+
+.page-issue-marker--comment {
+  background: linear-gradient(180deg, #73d13d 0%, #52c41a 100%);
+}
+
+.page-issue-marker--comment .page-issue-marker__label {
+  font-size: 0;
+}
+
+.page-issue-marker--comment .page-issue-marker__label::before {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M2.5 2.75h9a.75.75 0 0 1 .75.75v5a.75.75 0 0 1-.75.75H6.2L3.5 11.25V9.25H2.5a.75.75 0 0 1-.75-.75v-5a.75.75 0 0 1 .75-.75Z' fill='white'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.page-issue-marker--active.page-issue-marker--comment {
+  background: linear-gradient(180deg, #52c41a 0%, #389e0d 100%);
+}

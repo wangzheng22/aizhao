@@ -1,0 +1,142 @@
+.smart-review-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.smart-review-card--interactive {
+  cursor: pointer;
+}
+
+.smart-review-card--interactive:hover:not(.smart-review-card--active) {
+  border-color: #e8e8e8;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.smart-review-card--active {
+  border: 2px solid #1890ff;
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.16);
+}
+
+.smart-review-card--unlinked {
+  opacity: 0.72;
+}
+
+.smart-review-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+
+.smart-review-card__tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.smart-review-card__tag--risk {
+  color: #fff;
+  background: #722ed1;
+}
+
+.smart-review-card__tag--optimization {
+  color: #722ed1;
+  background: #f9f0ff;
+  border: 1px solid #d3adf7;
+}
+
+.smart-review-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #262626;
+}
+
+.smart-review-card__divider {
+  height: 1px;
+  margin: 10px 14px 0;
+  background: #f0f0f0;
+}
+
+.smart-review-card__section {
+  padding: 12px 14px 0;
+}
+
+.smart-review-card__label {
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8c8c8c;
+  margin-bottom: 8px;
+}
+
+.smart-review-card__excerpt-block {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #fde8e8;
+}
+
+.smart-review-card__excerpt {
+  font-size: 14px;
+  line-height: 22px;
+  color: #262626;
+  word-break: break-all;
+}
+
+.smart-review-card__suggestion-block {
+  border-radius: 4px;
+}
+
+.smart-review-card__suggestion-block--static {
+  padding: 8px 10px;
+  background: #f9fafb;
+}
+
+.smart-review-card__suggestion {
+  font-size: 14px;
+  line-height: 22px;
+  color: #262626;
+  word-break: break-all;
+}
+
+.smart-review-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 14px;
+}
+
+.smart-review-card__category {
+  font-size: 13px;
+  line-height: 20px;
+  color: #8c8c8c;
+}
+
+.smart-review-card__category em {
+  font-style: normal;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.smart-review-card__ai-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #f376fe 0%, #4b77ff 50%, #2bfad0 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
