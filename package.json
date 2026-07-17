@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "deploy:gitee": "npm run build && node scripts/deploy-gitee.mjs"
+    "deploy:gitee": "npm run build && node scripts/deploy-gitee.mjs",
+    "deploy:github": "node scripts/deploy-github.mjs"
   },
   "dependencies": {
     "pdfjs-dist": "^5.6.205",

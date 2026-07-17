@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  // Relative base so Gitee Pages works under https://用户名.gitee.io/仓库名/
-  base: './',
+// GitHub Pages project site: https://wangzheng22.github.io/aizhao/
+// Absolute base avoids "./..." resolving to site root when the URL has no trailing slash.
+const githubPagesBase = '/aizhao/';
+
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? githubPagesBase : '/',
   plugins: [react()],
   server: {
     port: 5174,
   },
-});
+}));
