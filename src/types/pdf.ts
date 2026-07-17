@@ -5,4 +5,4 @@ export type TocItem = {
   depth: number;
 };
 
-export const SAMPLE_PDF_URL = '/documents/sample-bidding-doc.pdf';
+export const SAMPLE_PDF_URL = `${import.meta.env.BASE_URL}documents/sample-bidding-doc.pdf`;
