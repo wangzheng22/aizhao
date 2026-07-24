@@ -1,32 +1,33 @@
-# React + TypeScript + Vite
+# AI智能评标
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Vite + React + TypeScript 前端演示页。
 
-Currently, two official plugins are available:
+## 线上地址
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+https://wangzheng22.github.io/aizhao/aiping/
 
-## React Compiler
+## 换电脑继续开发
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+源码在 GitHub 仓库 `wangzheng22/aizhao` 的 **`aiping`** 分支：
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+git clone -b aiping git@github.com:wangzheng22/aizhao.git 智能评汇报
+cd 智能评汇报
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+浏览器打开终端里提示的本地地址即可。
+
+## 常用命令
+
+```bash
+npm run dev            # 本地开发
+npm run build          # 生产构建
+npm run deploy:github  # 发布到 GitHub Pages（/aiping/）
+```
+
+## 说明
+
+- 演示页静态资源发布在同一仓库的 `gh-pages` 分支
+- 源码维护在 `aiping` 分支
