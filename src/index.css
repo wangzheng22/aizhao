@@ -1,0 +1,39 @@
+@font-face {
+  font-family: 'FZZCHJW';
+  src: url('/fonts/FZZCHJW.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+  color: #1f2329;
+  background: #f0f2f5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+ul {
+  list-style: none;
+}
