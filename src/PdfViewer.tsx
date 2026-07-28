@@ -85,6 +85,9 @@ export function PdfViewer({
   const thumbRef = useRef<HTMLElement>(null)
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const pageFromScroll = useRef(currentPage)
+  /** Suppress scroll-driven page sync while a programmatic jump settles */
+  const jumpLockRef = useRef(false)
+  const jumpUnlockTimer = useRef<number | null>(null)
   const fileSource = useMemo(() => file, [file])
 
   useEffect(() => {
@@ -92,6 +95,11 @@ export function PdfViewer({
     setPageHeight(0)
     pageRefs.current.clear()
     pageFromScroll.current = -1
+    jumpLockRef.current = false
+    if (jumpUnlockTimer.current != null) {
+      window.clearTimeout(jumpUnlockTimer.current)
+      jumpUnlockTimer.current = null
+    }
   }, [file])
 
   useEffect(() => {
@@ -173,20 +181,24 @@ export function PdfViewer({
 
   const scrollToPage = useCallback(
     (page: number) => {
-      const el = pageRefs.current.get(page)
-      if (el) {
-        pageFromScroll.current = page
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        return true
-      }
-      // Virtualized: jump by estimated offset before the page mounts
       const stage = stageRef.current
       if (!stage || estimatedPageHeight <= 0) return false
+
+      // Instant offset jump: smooth scroll + virtualization unmounts far pages mid-flight
+      // and scroll handlers overwrite currentPage before the target is reached.
       pageFromScroll.current = page
+      jumpLockRef.current = true
+      if (jumpUnlockTimer.current != null) {
+        window.clearTimeout(jumpUnlockTimer.current)
+      }
       stage.scrollTo({
         top: (page - 1) * (estimatedPageHeight + PAGE_GAP),
-        behavior: 'smooth',
+        behavior: 'auto',
       })
+      jumpUnlockTimer.current = window.setTimeout(() => {
+        jumpLockRef.current = false
+        jumpUnlockTimer.current = null
+      }, 120)
       return true
     },
     [estimatedPageHeight],
@@ -216,6 +228,7 @@ export function PdfViewer({
   }, [currentPage, numPages])
 
   const handleStageScroll = () => {
+    if (jumpLockRef.current) return
     const stage = stageRef.current
     if (!stage || estimatedPageHeight <= 0) return
 
