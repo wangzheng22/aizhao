@@ -500,7 +500,7 @@ h2 {
 
 .system-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 20px;
@@ -511,6 +511,13 @@ h2 {
 }
 
 .system-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.system-card__heading {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -535,9 +542,19 @@ h2 {
   color: var(--text);
 }
 
+.system-card__desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #3d4654;
+  min-height: 1.7em;
+  margin: 0;
+  padding-left: 44px;
+}
+
 .system-card__preview {
   flex-shrink: 0;
   line-height: 0;
+  margin-top: 2px;
 }
 
 .system-card__thumb {

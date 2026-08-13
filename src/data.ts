@@ -17,7 +17,7 @@ export const currentUser = {
 export const navTabs = [
   { id: 'basic', label: '项目基本信息' },
   { id: 'items', label: '评审项基本情况' },
-  { id: 'system', label: '评审体系' },
+  { id: 'system', label: 'AI评审体系' },
 ] as const
 
 const baseUrl = import.meta.env.BASE_URL
@@ -115,6 +115,7 @@ export const evaluationItems: {
 export const evaluationSystems = [
   {
     id: 'construction',
-    title: '施工组织设计评审体系',
+    title: 'AI施工组织设计评审体系',
+    desc: '本项目施工组织设计共19分，涵盖9大评审项，基于项目特征AI智能匹配256个参考评审点对投标文件进行全面专业分析',
   },
 ]

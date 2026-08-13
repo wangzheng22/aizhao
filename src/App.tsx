@@ -331,7 +331,7 @@ function App() {
               className="section reveal-block is-visible"
               id="system"
             >
-              <SectionTitle>评审体系</SectionTitle>
+              <SectionTitle>AI评审体系</SectionTitle>
               <div className="system-list">
                 {evaluationSystems.map((item) => (
                   <RevealCard key={item.id} delayMs={40}>
@@ -344,20 +344,23 @@ function App() {
                       }}
                     >
                       <div className="system-card__main">
-                        <span className="system-card__icon" aria-hidden="true">
-                          <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
-                            <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                            <path
-                              d="M5.5 13.5l3-3.5 2.2 2.2 3.8-4.7"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <circle cx="7.2" cy="8" r="1.1" fill="currentColor" />
-                          </svg>
-                        </span>
-                        <span className="system-card__title">{item.title}</span>
+                        <div className="system-card__heading">
+                          <span className="system-card__icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                              <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                              <path
+                                d="M5.5 13.5l3-3.5 2.2 2.2 3.8-4.7"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <circle cx="7.2" cy="8" r="1.1" fill="currentColor" />
+                            </svg>
+                          </span>
+                          <span className="system-card__title">{item.title}</span>
+                        </div>
+                        <p className="system-card__desc">{item.desc}</p>
                       </div>
                       <span className="system-card__preview" aria-hidden="true">
                         <img src={systemImages[item.id]} alt="" className="system-card__thumb" />
