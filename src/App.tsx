@@ -300,14 +300,23 @@ function App() {
                         speed={46}
                         onComplete={() => handleEvalTyped(index)}
                         suffix={
-                          <button
-                            type="button"
-                            className="page-tag"
-                            title={`定位到${item.tag}`}
-                            onClick={() => jumpToDocPage(item.doc, item.page)}
-                          >
-                            {item.tag}
-                          </button>
+                          <span className="page-tags">
+                            {item.links.map((link) => {
+                              const docLabel =
+                                docTabs.find((tab) => tab.id === link.doc)?.label ?? ''
+                              return (
+                                <button
+                                  key={`${link.doc}-${link.page}-${link.tag}`}
+                                  type="button"
+                                  className="page-tag"
+                                  title={`定位到${docLabel} ${link.tag}`}
+                                  onClick={() => jumpToDocPage(link.doc, link.page)}
+                                >
+                                  {link.tag}
+                                </button>
+                              )
+                            })}
+                          </span>
                         }
                       />
                     </div>
