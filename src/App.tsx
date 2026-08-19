@@ -232,7 +232,7 @@ function App() {
       >
         <aside className="panel panel--left">
           <div className="panel__header">
-            <h1 className="panel__title">AI智能评标</h1>
+            <h1 className="panel__title">AI项目分析</h1>
             <nav className="nav-tabs" aria-label="评标导航">
               {navTabs.map((tab) => (
                 <button
@@ -359,6 +359,12 @@ function App() {
               </div>
             </section>
             ) : null}
+          </div>
+
+          <div className="panel__footer">
+            <button type="button" className="ai-result-btn">
+              AI评审结果
+            </button>
           </div>
         </aside>
 
