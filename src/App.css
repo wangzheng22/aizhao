@@ -227,22 +227,24 @@ h2 {
 
 .panel__footer {
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
   padding: 8px 20px 20px;
 }
 
 .ai-result-btn {
   display: flex;
-  width: 100%;
+  width: 200px;
+  height: 40px;
   align-items: center;
   justify-content: center;
-  height: 52px;
-  border-radius: 8px;
-  background: var(--header-bg);
+  border-radius: 20px;
+  background: linear-gradient(90deg, #544cff 0%, #824cff 50%, #dd8eff 100%);
   color: #fff;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  box-shadow: 0 6px 16px rgba(0, 52, 144, 0.28);
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 16px rgba(84, 76, 255, 0.28);
   transition: filter 0.15s, transform 0.15s;
 }
 

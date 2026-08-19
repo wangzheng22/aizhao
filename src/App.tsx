@@ -363,7 +363,7 @@ function App() {
 
           <div className="panel__footer">
             <button type="button" className="ai-result-btn">
-              AI评审结果
+              进入AI评审结果
             </button>
           </div>
         </aside>
