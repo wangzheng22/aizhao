@@ -1,74 +1,126 @@
 import { useEffect, useState } from 'react';
 import './DocPrepHeader.css';
 
-const SAVED_UPDATE_INTERVAL_MS = 2 * 60 * 1000;
-const SAVED_ANIM_DURATION_MS = 500;
+export type HeaderNotice = {
+  id: number;
+  text: string;
+} | null;
 
 type DocPrepHeaderProps = {
   title: string;
+  notice: HeaderNotice;
+  projectInfoOpen: boolean;
+  reReviewEnabled?: boolean;
+  reReviewing?: boolean;
+  onToggleProjectInfo: () => void;
+  onReReview?: () => void;
+  onSave: () => void;
+  onExport: () => void;
+  onTraceReport: () => void;
 };
 
-function formatSavedTime(date: Date) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `最近保存 ${month} 月 ${day} 日 ${hours}:${minutes}`;
-}
+const NOTICE_ANIM_MS = 420;
 
-export function DocPrepHeader({ title }: DocPrepHeaderProps) {
-  const [savedAt, setSavedAt] = useState(() => new Date());
+export function DocPrepHeader({
+  title,
+  notice,
+  projectInfoOpen,
+  reReviewEnabled = false,
+  reReviewing = false,
+  onToggleProjectInfo,
+  onReReview,
+  onSave,
+  onExport,
+  onTraceReport,
+}: DocPrepHeaderProps) {
+  void reReviewEnabled;
+  void reReviewing;
+  void onReReview;
+  const [displayNotice, setDisplayNotice] = useState<HeaderNotice>(null);
   const [exiting, setExiting] = useState(false);
   const [entering, setEntering] = useState(false);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setExiting(true);
-    }, SAVED_UPDATE_INTERVAL_MS);
+    if (!notice) return undefined;
 
-    return () => window.clearInterval(intervalId);
-  }, []);
+    if (!displayNotice) {
+      setDisplayNotice(notice);
+      setEntering(true);
+      const enterId = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setEntering(false));
+      });
+      return () => window.cancelAnimationFrame(enterId);
+    }
 
-  useEffect(() => {
-    if (!exiting) return undefined;
+    if (displayNotice.id === notice.id) return undefined;
 
+    setExiting(true);
     const timeoutId = window.setTimeout(() => {
-      setSavedAt(new Date());
+      setDisplayNotice(notice);
       setExiting(false);
       setEntering(true);
-
       window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          setEntering(false);
-        });
+        window.requestAnimationFrame(() => setEntering(false));
       });
-    }, SAVED_ANIM_DURATION_MS);
+    }, NOTICE_ANIM_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [exiting]);
+  }, [notice, displayNotice]);
 
   return (
     <header className="doc-prep-header">
       <h1 className="doc-prep-header__title">{title}</h1>
 
+      <div className="doc-prep-header__message" aria-live="polite">
+        {displayNotice && (
+          <span
+            className={[
+              'doc-prep-header__notice',
+              exiting ? 'doc-prep-header__notice--exiting' : '',
+              entering ? 'doc-prep-header__notice--entering' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+              <path
+                d="M4.5 7l2 2 3.5-4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {displayNotice.text}
+          </span>
+        )}
+      </div>
+
       <div className="doc-prep-header__actions">
-        <span
+        <button
+          type="button"
           className={[
-            'doc-prep-header__saved',
-            exiting ? 'doc-prep-header__saved--exiting' : '',
-            entering ? 'doc-prep-header__saved--entering' : '',
+            'doc-prep-header__btn',
+            projectInfoOpen ? 'doc-prep-header__btn--active' : '',
           ]
             .filter(Boolean)
             .join(' ')}
+          aria-pressed={projectInfoOpen}
+          onClick={onToggleProjectInfo}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M4.5 7l2 2 3.5-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M2.5 3.5h9M2.5 7h9M2.5 10.5h6"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
           </svg>
-          {formatSavedTime(savedAt)}
-        </span>
+          <span>项目信息</span>
+        </button>
 
-        <button type="button" className="doc-prep-header__btn">
+        <button type="button" className="doc-prep-header__btn" onClick={onSave}>
           <svg
             className="doc-prep-header__btn-icon doc-prep-header__btn-icon--save"
             width="16"
@@ -82,7 +134,7 @@ export function DocPrepHeader({ title }: DocPrepHeaderProps) {
               fill="currentColor"
             />
           </svg>
-          保存
+          <span>保存</span>
         </button>
 
         <button type="button" className="doc-prep-header__btn doc-prep-header__btn--wide">
@@ -92,7 +144,7 @@ export function DocPrepHeader({ title }: DocPrepHeaderProps) {
           </svg>
         </button>
 
-        <button type="button" className="doc-prep-header__btn">
+        <button type="button" className="doc-prep-header__btn" onClick={onExport}>
           <svg
             className="doc-prep-header__btn-icon doc-prep-header__btn-icon--export"
             width="16"
@@ -106,14 +158,32 @@ export function DocPrepHeader({ title }: DocPrepHeaderProps) {
               fill="currentColor"
             />
           </svg>
-          导出
+          <span>导出</span>
+        </button>
+
+        <button type="button" className="doc-prep-header__btn" onClick={onTraceReport}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M3 2.5h8v9H3zM5 5h4M5 7.5h4M5 10h2.5"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>溯源报告</span>
         </button>
 
         <button type="button" className="doc-prep-header__user" aria-label="用户菜单">
           <span className="doc-prep-header__avatar" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="5.5" r="2.5" fill="white" />
-              <path d="M3.5 13.5c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+              <path
+                d="M3.5 13.5c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
             </svg>
           </span>
           <span className="doc-prep-header__username">用户名XX</span>

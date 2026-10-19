@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { completenessIssues, getCompletenessPercent } from '../../data/completenessIssues';
-import { getSmartReviewCount } from '../../data/smartReviewIssues';
 import { useCompletenessAnchors } from '../../hooks/useCompletenessAnchors';
-import { usePdfTextSelection } from '../../hooks/usePdfTextSelection';
 import { useResolvedComments } from '../../hooks/useResolvedComments';
 import { useSmartReviewAnchors } from '../../hooks/useSmartReviewAnchors';
 import { usePdfDocument } from '../../hooks/usePdfDocument';
@@ -11,36 +8,41 @@ import type { Comment } from '../../types/comment';
 import type { FieldAnchor, ResolvedCompletenessIssue } from '../../types/completeness';
 import type { SuggestionEditHandlers } from '../../types/suggestionEdit';
 import type { ResolvedSmartReviewIssue } from '../../types/smartReview';
-import { commentToAnchor, commentToMarkerIssue } from '../../utils/commentAnchors';
+import { commentToAnchor } from '../../utils/commentAnchors';
 import { formatCommentTime } from '../../utils/commentTime';
-import { getNextVisibleIssueId, getScrollContainer } from '../../utils/issueVisibility';
 import { sortIssuesByDocumentOrder } from '../../utils/issueDocumentOrder';
-import { getSmartReviewMarkerClass } from '../../utils/markerLabels';
-import { CommentsPanel } from './CommentsPanel';
-import { CompletenessPanel } from './CompletenessPanel';
+import type { IssueMarkSpec } from '../../utils/extractEditableDocument';
 import { DocumentToc } from './DocumentToc';
-import { PageIssueMarkersOverlay } from './PageIssueMarkersOverlay';
-import { PageIssuePopover } from './PageIssuePopover';
-import { PdfDocumentViewer } from './PdfDocumentViewer';
-import { SmartReviewPanel } from './SmartReviewPanel';
-import { SmartReviewPopover } from './SmartReviewPopover';
+import {
+  EditableDocumentViewer,
+  getEditableIssueAnchor,
+  scrollToEditableIssue,
+  scrollToEditablePage,
+  type EditableSelection,
+} from './EditableDocumentViewer';
+import {
+  ReviewChecklistPanel,
+  type ReviewFilter,
+  type ReviewLocateRequest,
+} from './ReviewChecklistPanel';
 import { TextSelectionOverlay } from './TextSelectionOverlay';
 import './DocPrepPreview.css';
+
+function filterForAnchorCategory(
+  category?: FieldAnchor['category'],
+): Exclude<ReviewFilter, 'confirm'> {
+  if (category === 'comment') return 'annotation';
+  return 'all';
+}
 
 type DocPrepPreviewProps = {
   documentGenerated: boolean;
   generating: boolean;
   updatingSupplement?: boolean;
   sidebarOpen: boolean;
-  completenessOpen: boolean;
-  smartReviewOpen: boolean;
-  commentsOpen: boolean;
   userComments: Comment[];
   onUserCommentsChange: (comments: Comment[]) => void;
-  onCompletenessClose: () => void;
-  onSmartReviewClose: () => void;
-  onCommentsClose: () => void;
-  onCommentsOpen: () => void;
+  onNotice?: (text: string) => void;
 };
 
 export function DocPrepPreview({
@@ -48,44 +50,35 @@ export function DocPrepPreview({
   generating,
   updatingSupplement = false,
   sidebarOpen,
-  completenessOpen,
-  smartReviewOpen,
-  commentsOpen,
   userComments,
   onUserCommentsChange,
-  onCompletenessClose,
-  onSmartReviewClose,
-  onCommentsClose,
-  onCommentsOpen,
+  onNotice,
 }: DocPrepPreviewProps) {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const pdfUrl = documentGenerated ? SAMPLE_PDF_URL : null;
-  const { pdf, toc, numPages, loading, error } = usePdfDocument(pdfUrl);
+  const { pdf, toc, loading, error } = usePdfDocument(pdfUrl);
   const {
     issues: completenessIssueList,
-    anchors: completenessAnchors,
     loading: completenessLoading,
   } = useCompletenessAnchors(pdf);
   const {
     issues: smartReviewIssueList,
-    anchors: smartReviewAnchors,
     loading: smartReviewLoading,
   } = useSmartReviewAnchors(pdf);
   const { comments: allComments } = useResolvedComments(pdf, userComments);
-  const { selection, clearSelection } = usePdfTextSelection(viewerRef);
 
   const [tocOpen, setTocOpen] = useState(true);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [activePage, setActivePage] = useState(1);
-  const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
-  const [activeSmartReviewIssueId, setActiveSmartReviewIssueId] = useState<string | null>(null);
-  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [draftCommentId, setDraftCommentId] = useState<string | null>(null);
+  const [locateRequest, setLocateRequest] = useState<ReviewLocateRequest | null>(null);
   const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
-  const [inlineIssueId, setInlineIssueId] = useState<string | null>(null);
-  const [inlineSmartReviewIssueId, setInlineSmartReviewIssueId] = useState<string | null>(null);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [editedSuggestions, setEditedSuggestions] = useState<Record<string, string>>({});
+  const [appliedTexts, setAppliedTexts] = useState<Record<string, string>>({});
+  const [selection, setSelection] = useState<EditableSelection | null>(null);
 
   const bumpLayoutVersion = useCallback(() => {
     setLayoutVersion((version) => version + 1);
@@ -108,8 +101,6 @@ export function DocPrepPreview({
     },
   };
 
-  const completenessPercent = getCompletenessPercent(completenessIssues);
-  const smartReviewCount = getSmartReviewCount();
   const openCompletenessIssues = useMemo(
     () =>
       sortIssuesByDocumentOrder(
@@ -124,128 +115,180 @@ export function DocPrepPreview({
   );
 
   const orderedComments = useMemo(
-    () => sortIssuesByDocumentOrder(allComments.map((comment) => ({ ...comment, anchor: commentToAnchor(comment) }))),
+    () =>
+      sortIssuesByDocumentOrder(
+        allComments.map((comment) => ({ ...comment, anchor: commentToAnchor(comment) })),
+      ),
     [allComments],
   );
 
-  const commentAnchors = useMemo(
-    () => allComments.map(commentToAnchor),
-    [allComments],
-  );
-
-  const commentMarkerIssues = useMemo(
-    () => (!commentsOpen ? orderedComments.map(commentToMarkerIssue) : []),
-    [commentsOpen, orderedComments],
-  );
-
-  const highlightAnchors = [...completenessAnchors, ...smartReviewAnchors, ...commentAnchors];
-
-  const markerAnchorIssues = [
-    ...(!completenessOpen ? openCompletenessIssues : []),
-    ...(!smartReviewOpen ? orderedSmartReviewIssues : []),
-    ...commentMarkerIssues,
-  ];
+  const issueMarks = useMemo((): IssueMarkSpec[] => {
+    const marks: IssueMarkSpec[] = [];
+    openCompletenessIssues.forEach((issue) => {
+      if (issue.searchText) {
+        marks.push({
+          id: issue.id,
+          searchText: issue.searchText,
+          category: 'completeness',
+        });
+      }
+    });
+    orderedSmartReviewIssues.forEach((issue) => {
+      if (issue.searchText) {
+        marks.push({
+          id: issue.id,
+          searchText: issue.searchText,
+          category: 'smart-review',
+        });
+      }
+    });
+    return marks;
+  }, [openCompletenessIssues, orderedSmartReviewIssues]);
 
   const highlightsLoading = completenessLoading || smartReviewLoading;
 
-  const showHighlights = documentGenerated && !highlightsLoading && highlightAnchors.length > 0;
-
-  const displayActiveIssueId = completenessOpen
-    ? activeIssueId
-    : smartReviewOpen
-      ? activeSmartReviewIssueId
-      : commentsOpen
-        ? activeCommentId
-        : inlineIssueId ?? inlineSmartReviewIssueId ?? activeCommentId;
-  const inlineIssue = inlineIssueId
-    ? completenessIssueList.find((issue) => issue.id === inlineIssueId) ?? null
-    : null;
-  const inlineSmartReviewIssue = inlineSmartReviewIssueId
-    ? smartReviewIssueList.find((issue) => issue.id === inlineSmartReviewIssueId) ?? null
-    : null;
-
   const scrollToPage = useCallback((pageNumber: number) => {
     setActivePage(pageNumber);
-    document.getElementById(`pdf-page-${pageNumber}`)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
+    scrollToEditablePage(pageNumber);
   }, []);
 
-  const scrollToIssue = useCallback((anchor: FieldAnchor) => {
-    setActivePage(anchor.pageNumber);
-
-    const scrollToHighlight = () => {
-      const highlight = document.querySelector<HTMLElement>(
-        `.field-highlight[data-issue-id="${anchor.issueId}"]`,
-      );
-
-      if (highlight) {
-        highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return true;
-      }
-
-      return false;
-    };
-
-    document.getElementById(`pdf-page-${anchor.pageNumber}`)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
+  const focusIssue = useCallback((issueId: string) => {
+    setFocusedIssueId(null);
+    window.requestAnimationFrame(() => {
+      setFocusedIssueId(issueId);
     });
 
     let attempts = 0;
     const retry = () => {
-      if (scrollToHighlight() || attempts >= 24) return;
+      if (scrollToEditableIssue(issueId) || attempts >= 24) return;
       attempts += 1;
       window.requestAnimationFrame(retry);
     };
-
-    window.setTimeout(retry, 120);
+    window.setTimeout(retry, 80);
   }, []);
 
-  const focusIssue = useCallback(
-    (issueId: string, anchor?: FieldAnchor) => {
-      setFocusedIssueId(null);
-
-      window.requestAnimationFrame(() => {
-        setFocusedIssueId(issueId);
-      });
-
-      if (anchor) {
-        scrollToIssue(anchor);
-      }
+  const handleAddToConfirmList = useCallback(
+    (issueId: string) => {
+      const title =
+        completenessIssueList.find((item) => item.id === issueId)?.title ||
+        smartReviewIssueList.find((item) => item.id === issueId)?.title ||
+        issueId;
+      onNotice?.(`已加入待确认清单：${title}`);
     },
-    [scrollToIssue],
+    [onNotice, completenessIssueList, smartReviewIssueList],
+  );
+
+  const handleExportConfirmList = useCallback(
+    (items: { id: string; title: string; tagLabel: string; reason: string }[]) => {
+      if (!items.length) {
+        onNotice?.('请先勾选要导出的待确认项');
+        return;
+      }
+      onNotice?.(`已导出待确认清单（${items.length} 项）`);
+    },
+    [onNotice],
+  );
+
+  const handleApplySuggestion = useCallback(
+    (issueId: string, suggestion: string) => {
+      const trimmed = suggestion.trim();
+      if (!trimmed) {
+        onNotice?.('修改建议为空，无法替换');
+        return;
+      }
+
+      const mark = document.querySelector(
+        `.editable-doc__mark[data-issue-id="${CSS.escape(issueId)}"]`,
+      );
+      if (!mark) {
+        onNotice?.('未找到可替换的原文位置');
+        return;
+      }
+
+      setAppliedTexts((prev) => ({ ...prev, [issueId]: trimmed }));
+      const preview = trimmed.length > 36 ? `${trimmed.slice(0, 36)}…` : trimmed;
+      onNotice?.(`已替换原文：${preview}`);
+      setActiveItemId(issueId);
+      focusIssue(issueId);
+    },
+    [onNotice, focusIssue],
+  );
+
+  const handleRegenerateSuggestion = useCallback(() => {
+    onNotice?.('AI 修改建议已重新生成');
+  }, [onNotice]);
+
+  const openReviewPanel = useCallback(() => {
+    setReviewOpen(true);
+  }, []);
+
+  const locateChecklistItem = useCallback(
+    (itemId: string, filter: Exclude<ReviewFilter, 'confirm'>) => {
+      const expanding = !reviewOpen;
+      openReviewPanel();
+      setActiveItemId(itemId);
+      setLocateRequest((prev) => ({
+        id: itemId,
+        filter,
+        token: (prev?.token ?? 0) + 1,
+        expanding,
+      }));
+      focusIssue(itemId);
+    },
+    [reviewOpen, openReviewPanel, focusIssue],
+  );
+
+  const handleIssueMarkClick = useCallback(
+    (issueId: string) => {
+      const completeness = openCompletenessIssues.find((item) => item.id === issueId);
+      const smart = orderedSmartReviewIssues.find((item) => item.id === issueId);
+      const category = completeness
+        ? 'completeness'
+        : smart
+          ? 'smart-review'
+          : getEditableIssueAnchor(issueId)?.category;
+      locateChecklistItem(issueId, filterForAnchorCategory(category));
+    },
+    [openCompletenessIssues, orderedSmartReviewIssues, locateChecklistItem],
   );
 
   const handleCompletenessIssueClick = useCallback(
     (issue: ResolvedCompletenessIssue) => {
-      setActiveIssueId(issue.id);
-      focusIssue(issue.id, issue.anchor);
+      setActiveItemId(issue.id);
+      focusIssue(issue.id);
     },
     [focusIssue],
   );
 
   const handleSmartReviewIssueClick = useCallback(
     (issue: ResolvedSmartReviewIssue) => {
-      setActiveSmartReviewIssueId(issue.id);
-      focusIssue(issue.id, issue.anchor);
+      setActiveItemId(issue.id);
+      focusIssue(issue.id);
     },
     [focusIssue],
   );
 
   const handleCommentClick = useCallback(
     (comment: Comment) => {
-      setActiveCommentId(comment.id);
-      focusIssue(comment.id, commentToAnchor(comment));
+      setActiveItemId(comment.id);
+      focusIssue(comment.id);
     },
     [focusIssue],
   );
+
+  const clearSelection = useCallback(() => {
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+  }, []);
 
   const handleAddComment = useCallback(() => {
     if (!selection) return;
 
     const id = `comment-${Date.now()}`;
+    const pageEl = document.getElementById(`doc-page-${selection.pageNumber}`);
+    const pageRect = pageEl?.getBoundingClientRect();
+    const rect = selection.clientRect;
+
     const newComment: Comment = {
       id,
       selectedText: selection.text,
@@ -253,17 +296,23 @@ export function DocPrepPreview({
       authorName: '李静',
       createdAt: formatCommentTime(),
       pageNumber: selection.pageNumber,
-      rect: selection.rect,
+      rect: pageRect
+        ? {
+            x: rect.left - pageRect.left,
+            y: rect.top - pageRect.top,
+            width: rect.width,
+            height: rect.height,
+          }
+        : { x: 0, y: 0, width: rect.width, height: rect.height },
       isDraft: true,
     };
 
     onUserCommentsChange([...userComments, newComment]);
     setDraftCommentId(id);
-    setActiveCommentId(id);
+    setActiveItemId(id);
     clearSelection();
-    onCommentsOpen();
-    focusIssue(id, commentToAnchor(newComment));
-  }, [selection, userComments, onUserCommentsChange, clearSelection, onCommentsOpen, focusIssue]);
+    locateChecklistItem(id, 'annotation');
+  }, [selection, userComments, onUserCommentsChange, clearSelection, locateChecklistItem]);
 
   const handleCommentContentChange = useCallback(
     (commentId: string, content: string) => {
@@ -285,186 +334,58 @@ export function DocPrepPreview({
   const handleCommentDelete = useCallback(
     (commentId: string) => {
       onUserCommentsChange(userComments.filter((comment) => comment.id !== commentId));
-      if (activeCommentId === commentId) {
-        setActiveCommentId(null);
-      }
-      if (draftCommentId === commentId) {
-        setDraftCommentId(null);
-      }
+      if (activeItemId === commentId) setActiveItemId(null);
+      if (draftCommentId === commentId) setDraftCommentId(null);
     },
-    [userComments, onUserCommentsChange, activeCommentId, draftCommentId],
+    [userComments, onUserCommentsChange, activeItemId, draftCommentId],
   );
-
-  const handleCommentMarkerClick = useCallback(
-    (comment: Comment) => {
-      onCommentsOpen();
-      setActiveCommentId(comment.id);
-      focusIssue(comment.id, commentToAnchor(comment));
-    },
-    [onCommentsOpen, focusIssue],
-  );
-
-  const handleInlineMarkerClick = useCallback(
-    (issue: ResolvedCompletenessIssue) => {
-      if (inlineIssueId === issue.id) {
-        setInlineIssueId(null);
-        setFocusedIssueId(null);
-        return;
-      }
-
-      setInlineIssueId(issue.id);
-      setInlineSmartReviewIssueId(null);
-      setFocusedIssueId(issue.id);
-    },
-    [inlineIssueId],
-  );
-
-  const handleInlineSmartReviewClick = useCallback(
-    (issue: ResolvedSmartReviewIssue) => {
-      if (inlineSmartReviewIssueId === issue.id) {
-        setInlineSmartReviewIssueId(null);
-        setFocusedIssueId(null);
-        return;
-      }
-
-      setInlineSmartReviewIssueId(issue.id);
-      setInlineIssueId(null);
-      setFocusedIssueId(issue.id);
-    },
-    [inlineSmartReviewIssueId],
-  );
-
-  const handleInlineClose = useCallback(() => {
-    setInlineIssueId(null);
-    setInlineSmartReviewIssueId(null);
-    setFocusedIssueId(null);
-  }, []);
 
   useEffect(() => {
-    if (!inlineIssueId || completenessOpen || completenessLoading) return undefined;
-
-    const syncVisibleIssue = () => {
-      const nextIssueId = getNextVisibleIssueId(openCompletenessIssues, inlineIssueId, viewerRef.current);
-      if (nextIssueId === null) {
-        setInlineIssueId(null);
-        setFocusedIssueId(null);
-        return;
-      }
-      if (nextIssueId !== inlineIssueId) {
-        setInlineIssueId(nextIssueId);
-        setFocusedIssueId(nextIssueId);
-      }
-    };
-
-    const scrollEl = getScrollContainer(viewerRef.current);
-    scrollEl?.addEventListener('scroll', syncVisibleIssue, { passive: true });
-    window.addEventListener('resize', syncVisibleIssue);
-
-    const observer = new ResizeObserver(syncVisibleIssue);
-    if (viewerRef.current) observer.observe(viewerRef.current);
-    if (scrollEl) observer.observe(scrollEl);
-
-    return () => {
-      scrollEl?.removeEventListener('scroll', syncVisibleIssue);
-      window.removeEventListener('resize', syncVisibleIssue);
-      observer.disconnect();
-    };
-  }, [inlineIssueId, completenessOpen, completenessLoading, openCompletenessIssues]);
-
-  useEffect(() => {
-    if (!inlineSmartReviewIssueId || smartReviewOpen || smartReviewLoading) return undefined;
-
-    const syncVisibleIssue = () => {
-      const nextIssueId = getNextVisibleIssueId(
-        orderedSmartReviewIssues,
-        inlineSmartReviewIssueId,
-        viewerRef.current,
-      );
-      if (nextIssueId === null) {
-        setInlineSmartReviewIssueId(null);
-        setFocusedIssueId(null);
-        return;
-      }
-      if (nextIssueId !== inlineSmartReviewIssueId) {
-        setInlineSmartReviewIssueId(nextIssueId);
-        setFocusedIssueId(nextIssueId);
-      }
-    };
-
-    const scrollEl = getScrollContainer(viewerRef.current);
-    scrollEl?.addEventListener('scroll', syncVisibleIssue, { passive: true });
-    window.addEventListener('resize', syncVisibleIssue);
-
-    const observer = new ResizeObserver(syncVisibleIssue);
-    if (viewerRef.current) observer.observe(viewerRef.current);
-    if (scrollEl) observer.observe(scrollEl);
-
-    return () => {
-      scrollEl?.removeEventListener('scroll', syncVisibleIssue);
-      window.removeEventListener('resize', syncVisibleIssue);
-      observer.disconnect();
-    };
-  }, [inlineSmartReviewIssueId, smartReviewOpen, smartReviewLoading, orderedSmartReviewIssues]);
-
-  useEffect(() => {
-    if (completenessOpen) {
-      setInlineIssueId(null);
-      return;
+    if (documentGenerated) {
+      setReviewOpen(true);
+    } else {
+      setReviewOpen(false);
+      setActiveItemId(null);
+      setDraftCommentId(null);
+      setAppliedTexts({});
+      setSelection(null);
     }
-
-    setActiveIssueId(null);
-    setFocusedIssueId((current) =>
-      current && openCompletenessIssues.some((issue) => issue.id === current) ? null : current,
-    );
-  }, [completenessOpen, openCompletenessIssues]);
+  }, [documentGenerated]);
 
   useEffect(() => {
-    if (smartReviewOpen) {
-      setInlineSmartReviewIssueId(null);
-      return;
-    }
-
-    setActiveSmartReviewIssueId(null);
-    setFocusedIssueId((current) =>
-      current && orderedSmartReviewIssues.some((issue) => issue.id === current) ? null : current,
-    );
-  }, [smartReviewOpen, orderedSmartReviewIssues]);
-
-  useEffect(() => {
-    if (commentsOpen) return;
-
-    setActiveCommentId(null);
+    if (reviewOpen) return;
+    setActiveItemId(null);
     setDraftCommentId(null);
-    setFocusedIssueId((current) =>
-      current && orderedComments.some((comment) => comment.id === current) ? null : current,
-    );
-  }, [commentsOpen, orderedComments]);
+    setFocusedIssueId(null);
+  }, [reviewOpen]);
 
   useEffect(() => {
-    if (!completenessOpen || activeIssueId) return;
+    if (!reviewOpen || activeItemId) return;
 
-    const firstOpenIssue = openCompletenessIssues.find((issue) => issue.anchor);
-    if (firstOpenIssue) {
-      handleCompletenessIssueClick(firstOpenIssue);
+    const firstReview = sortIssuesByDocumentOrder([
+      ...openCompletenessIssues.map((issue) => ({ kind: 'missing' as const, ...issue })),
+      ...orderedSmartReviewIssues.map((issue) => ({ kind: 'issue' as const, ...issue })),
+    ]).find((item) => item.anchor || item.searchText);
+
+    if (firstReview?.kind === 'missing') {
+      handleCompletenessIssueClick(firstReview);
+      return;
     }
-  }, [completenessOpen, openCompletenessIssues, activeIssueId, handleCompletenessIssueClick]);
-
-  useEffect(() => {
-    if (!smartReviewOpen || activeSmartReviewIssueId) return;
-
-    const firstIssue = orderedSmartReviewIssues.find((issue) => issue.anchor);
-    if (firstIssue) {
-      handleSmartReviewIssueClick(firstIssue);
+    if (firstReview?.kind === 'issue') {
+      handleSmartReviewIssueClick(firstReview);
     }
-  }, [smartReviewOpen, orderedSmartReviewIssues, activeSmartReviewIssueId, handleSmartReviewIssueClick]);
+  }, [
+    reviewOpen,
+    activeItemId,
+    openCompletenessIssues,
+    orderedSmartReviewIssues,
+    handleCompletenessIssueClick,
+    handleSmartReviewIssueClick,
+  ]);
 
   useEffect(() => {
     if (!focusedIssueId) return undefined;
-
-    const timer = window.setTimeout(() => {
-      setFocusedIssueId(null);
-    }, 1600);
-
+    const timer = window.setTimeout(() => setFocusedIssueId(null), 1600);
     return () => window.clearTimeout(timer);
   }, [focusedIssueId]);
 
@@ -472,44 +393,31 @@ export function DocPrepPreview({
     bumpLayoutVersion();
     const timer = window.setTimeout(bumpLayoutVersion, 280);
     return () => window.clearTimeout(timer);
-  }, [completenessOpen, smartReviewOpen, commentsOpen, tocOpen, sidebarOpen, bumpLayoutVersion]);
+  }, [reviewOpen, tocOpen, sidebarOpen, bumpLayoutVersion]);
 
   useEffect(() => {
-    if (!pdf || !numPages) return undefined;
+    const viewer = viewerRef.current?.querySelector('.editable-doc');
+    if (!viewer) return undefined;
 
-    let intersectionObserver: IntersectionObserver | undefined;
+    const pages = Array.from(viewer.querySelectorAll('[data-page]')) as HTMLElement[];
+    if (!pages.length) return undefined;
 
-    const frameId = window.requestAnimationFrame(() => {
-      const viewer = document.querySelector('.pdf-viewer');
-      if (!viewer) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) {
+          const pageNumber = Number(visible.target.getAttribute('data-page'));
+          if (pageNumber) setActivePage(pageNumber);
+        }
+      },
+      { root: viewer, threshold: [0.25, 0.5, 0.75] },
+    );
 
-      const pages = Array.from(viewer.querySelectorAll('[data-page]')) as HTMLElement[];
-      if (!pages.length) return;
-
-      intersectionObserver = new IntersectionObserver(
-        (entries) => {
-          const visible = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-          if (visible) {
-            const pageNumber = Number(visible.target.getAttribute('data-page'));
-            if (pageNumber) {
-              setActivePage(pageNumber);
-            }
-          }
-        },
-        { root: viewer, threshold: [0.25, 0.5, 0.75] },
-      );
-
-      pages.forEach((page) => intersectionObserver!.observe(page));
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      intersectionObserver?.disconnect();
-    };
-  }, [pdf, numPages]);
+    pages.forEach((page) => observer.observe(page));
+    return () => observer.disconnect();
+  }, [pdf, layoutVersion]);
 
   return (
     <div className="doc-prep-preview">
@@ -548,6 +456,12 @@ export function DocPrepPreview({
               </svg>
             </button>
 
+            {!reviewOpen && (
+              <button type="button" className="doc-prep-preview__review-tab" onClick={openReviewPanel}>
+                智能审查
+              </button>
+            )}
+
             <div className="doc-prep-preview__layout">
               <DocumentToc
                 open={tocOpen}
@@ -560,137 +474,55 @@ export function DocPrepPreview({
               <div ref={workspaceRef} className="doc-prep-preview__workspace">
                 <div ref={viewerRef} className="doc-prep-preview__viewer">
                   {loading && <div className="doc-prep-preview__status">正在加载招标文件…</div>}
-                  {error && <div className="doc-prep-preview__status doc-prep-preview__status--error">{error}</div>}
+                  {error && (
+                    <div className="doc-prep-preview__status doc-prep-preview__status--error">{error}</div>
+                  )}
                   {!loading && !error && pdf && (
-                    <PdfDocumentViewer
+                    <EditableDocumentViewer
                       pdf={pdf}
-                      numPages={numPages}
-                      anchors={highlightAnchors}
-                      markerIssues={markerAnchorIssues}
-                      activeIssueId={displayActiveIssueId}
+                      marks={issueMarks}
+                      appliedTexts={appliedTexts}
+                      activeIssueId={activeItemId}
                       focusedIssueId={focusedIssueId}
-                      showHighlights={showHighlights}
-                      layoutVersion={layoutVersion}
-                      enableTextSelection
-                      textSelection={
-                        selection && !commentsOpen
-                          ? { pageNumber: selection.pageNumber, rect: selection.rect }
-                          : null
-                      }
-                    />
-                  )}
-
-                  {!completenessOpen && !completenessLoading && (
-                    <PageIssueMarkersOverlay
-                      viewerRef={viewerRef}
-                      issues={openCompletenessIssues}
-                      inlineIssueId={inlineIssueId}
-                      layoutVersion={layoutVersion}
-                      active={!completenessOpen}
-                      getMarkerClass={() => 'page-issue-marker--completeness'}
-                      onIssueClick={(issue) => {
-                        const matched = openCompletenessIssues.find((item) => item.id === issue.id);
-                        if (matched) handleInlineMarkerClick(matched);
-                      }}
-                    />
-                  )}
-
-                  {!smartReviewOpen && !smartReviewLoading && (
-                    <PageIssueMarkersOverlay
-                      viewerRef={viewerRef}
-                      issues={orderedSmartReviewIssues}
-                      inlineIssueId={inlineSmartReviewIssueId}
-                      layoutVersion={layoutVersion}
-                      active={!smartReviewOpen}
-                      getMarkerClass={getSmartReviewMarkerClass}
-                      onIssueClick={(issue) => {
-                        const matched = orderedSmartReviewIssues.find((item) => item.id === issue.id);
-                        if (matched) handleInlineSmartReviewClick(matched);
-                      }}
-                    />
-                  )}
-
-                  {!commentsOpen && (
-                    <PageIssueMarkersOverlay
-                      viewerRef={viewerRef}
-                      issues={commentMarkerIssues}
-                      inlineIssueId={activeCommentId}
-                      layoutVersion={layoutVersion}
-                      active={!commentsOpen}
-                      getMarkerClass={() => 'page-issue-marker--comment'}
-                      onIssueClick={(issue) => {
-                        const matched = orderedComments.find((item) => item.id === issue.id);
-                        if (matched) handleCommentMarkerClick(matched);
-                      }}
+                      onIssueClick={handleIssueMarkClick}
+                      onSelectionChange={setSelection}
                     />
                   )}
                 </div>
 
-                {selection && !commentsOpen && (
+                {selection && (
                   <TextSelectionOverlay
                     selection={selection}
                     workspaceRef={workspaceRef}
                     viewerRef={viewerRef}
                     onAddComment={handleAddComment}
                     onAiWrite={() => {
-                      window.alert('AI 帮我写功能即将上线');
+                      onNotice?.('AI改写功能即将上线');
                     }}
                   />
                 )}
 
-                {!completenessOpen && inlineIssue && (
-                  <PageIssuePopover
-                    issue={inlineIssue}
-                    workspaceRef={workspaceRef}
-                    viewerRef={viewerRef}
-                    suggestionEdit={suggestionEdit}
-                    onClose={handleInlineClose}
-                  />
-                )}
-
-                {!smartReviewOpen && inlineSmartReviewIssue && (
-                  <SmartReviewPopover
-                    issue={inlineSmartReviewIssue}
-                    workspaceRef={workspaceRef}
-                    viewerRef={viewerRef}
-                    suggestionEdit={suggestionEdit}
-                    onClose={handleInlineClose}
-                  />
-                )}
-
-                <CompletenessPanel
-                  open={completenessOpen}
-                  percent={completenessPercent}
-                  issues={completenessIssueList}
-                  activeIssueId={activeIssueId}
-                  loading={completenessLoading}
-                  suggestionEdit={suggestionEdit}
-                  onClose={onCompletenessClose}
-                  onIssueClick={handleCompletenessIssueClick}
-                  onLayoutSettled={bumpLayoutVersion}
-                />
-
-                <SmartReviewPanel
-                  open={smartReviewOpen}
-                  count={smartReviewCount}
-                  issues={orderedSmartReviewIssues}
-                  activeIssueId={activeSmartReviewIssueId}
-                  loading={smartReviewLoading}
-                  suggestionEdit={suggestionEdit}
-                  onClose={onSmartReviewClose}
-                  onIssueClick={handleSmartReviewIssueClick}
-                  onLayoutSettled={bumpLayoutVersion}
-                />
-
-                <CommentsPanel
-                  open={commentsOpen}
+                <ReviewChecklistPanel
+                  open={reviewOpen}
+                  completenessIssues={completenessIssueList}
+                  smartReviewIssues={orderedSmartReviewIssues}
                   comments={orderedComments}
-                  activeCommentId={activeCommentId}
+                  activeItemId={activeItemId}
                   draftCommentId={draftCommentId}
-                  onClose={onCommentsClose}
+                  locateRequest={locateRequest}
+                  loading={highlightsLoading}
+                  suggestionEdit={suggestionEdit}
+                  onClose={() => setReviewOpen(false)}
+                  onCompletenessClick={handleCompletenessIssueClick}
+                  onSmartReviewClick={handleSmartReviewIssueClick}
                   onCommentClick={handleCommentClick}
                   onCommentContentChange={handleCommentContentChange}
                   onCommentDelete={handleCommentDelete}
+                  appliedIssueIds={Object.keys(appliedTexts)}
+                  onAddToConfirmList={handleAddToConfirmList}
+                  onApplySuggestion={handleApplySuggestion}
+                  onRegenerateSuggestion={handleRegenerateSuggestion}
+                  onExportConfirmList={handleExportConfirmList}
                   onLayoutSettled={bumpLayoutVersion}
                 />
               </div>

@@ -1,4 +1,5 @@
 import type { WizardStep } from '../../constants/documentPrep';
+import { wizardSteps } from '../../constants/documentPrep';
 import type { ParseStatus, ProjectForm, UploadFiles } from '../../types/documentWorkflow';
 import { UploadPanel } from './panels/UploadPanel';
 import { ProjectInfoPanel } from './panels/ProjectInfoPanel';
@@ -9,6 +10,8 @@ import './DocPrepSidebar.css';
 type DocPrepSidebarProps = {
   open: boolean;
   currentStep: WizardStep;
+  completedSteps: WizardStep[];
+  onTabClick: (tab: WizardStep) => void;
   uploadFiles: UploadFiles;
   onUploadFilesChange: (files: UploadFiles) => void;
   projectForm: ProjectForm;
@@ -35,6 +38,8 @@ function hasUploadedFiles(files: UploadFiles) {
 export function DocPrepSidebar({
   open,
   currentStep,
+  completedSteps,
+  onTabClick,
   uploadFiles,
   onUploadFilesChange,
   projectForm,
@@ -54,6 +59,12 @@ export function DocPrepSidebar({
   onUpdateSupplement,
 }: DocPrepSidebarProps) {
   const hasFiles = hasUploadedFiles(uploadFiles);
+  const currentIndex = wizardSteps.indexOf(currentStep);
+
+  const isTabEnabled = (tab: WizardStep) => {
+    const tabIndex = wizardSteps.indexOf(tab);
+    return tabIndex <= currentIndex || completedSteps.includes(tab);
+  };
 
   return (
     <aside
@@ -62,19 +73,47 @@ export function DocPrepSidebar({
       aria-hidden={!open}
     >
       <div className="doc-prep-sidebar__content">
-        {currentStep === '文件上传' && (
-          <UploadPanel files={uploadFiles} onFilesChange={onUploadFilesChange} />
-        )}
-        {currentStep === '项目信息' && (
-          <ProjectInfoPanel
-            form={projectForm}
-            parseStatus={parseStatus}
-            onChange={onProjectFormChange}
-          />
-        )}
-        {currentStep === '范本选择' && (
-          <TemplatePanel selectedId={selectedTemplateId} onSelect={onTemplateSelect} />
-        )}
+        <div className="doc-prep-sidebar__tabs" role="tablist" aria-label="编制步骤">
+          {wizardSteps.map((tab) => {
+            const enabled = isTabEnabled(tab);
+            const active = currentStep === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                disabled={!enabled}
+                className={[
+                  'doc-prep-sidebar__tab',
+                  active ? 'doc-prep-sidebar__tab--active' : '',
+                  !enabled ? 'doc-prep-sidebar__tab--disabled' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => onTabClick(tab)}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="doc-prep-sidebar__panel">
+          {currentStep === '文件上传' && (
+            <UploadPanel files={uploadFiles} onFilesChange={onUploadFilesChange} />
+          )}
+          {currentStep === '项目信息' && (
+            <ProjectInfoPanel
+              form={projectForm}
+              parseStatus={parseStatus}
+              onChange={onProjectFormChange}
+            />
+          )}
+          {currentStep === '范本选择' && (
+            <TemplatePanel selectedId={selectedTemplateId} onSelect={onTemplateSelect} />
+          )}
+        </div>
       </div>
 
       {currentStep === '文件上传' && (

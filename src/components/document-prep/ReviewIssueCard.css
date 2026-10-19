@@ -1,0 +1,270 @@
+.review-issue-card {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.review-issue-card--interactive {
+  cursor: pointer;
+}
+
+.review-issue-card--interactive:hover:not(.review-issue-card--active) {
+  border-color: #d9d9d9;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.review-issue-card--active {
+  border: 2px solid #1890ff;
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.16);
+}
+
+.review-issue-card--unlinked {
+  opacity: 0.72;
+}
+
+.review-issue-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.review-issue-card__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.review-issue-card__check {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.review-issue-card__check input {
+  width: 14px;
+  height: 14px;
+  accent-color: #3671ff;
+  cursor: pointer;
+}
+
+.review-issue-card__tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 20px;
+  border-radius: 2px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.review-issue-card__tag--missing {
+  background: #ff4d4f;
+}
+
+.review-issue-card__tag--issue {
+  background: #a312d0;
+}
+
+.review-issue-card__title {
+  margin: 0;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 22px;
+  color: #262626;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-issue-card__confirm-btn {
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 22px;
+  color: #3671ff;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+
+.review-issue-card__confirm-btn:hover:not(:disabled) {
+  background: #edf3ff;
+}
+
+.review-issue-card__confirm-btn--added,
+.review-issue-card__confirm-btn:disabled {
+  color: #8c8c8c;
+  cursor: default;
+}
+
+.review-issue-card__reason {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #262626;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.review-issue-card__bases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.review-issue-card__basis {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #3671ff;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.review-issue-card__basis span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.review-issue-card__basis:hover {
+  color: #1f54d4;
+}
+
+.review-issue-card__basis-icon {
+  flex-shrink: 0;
+}
+
+.review-issue-card__ai {
+  margin-top: 12px;
+  padding: 10px 12px 12px;
+  border-radius: 6px;
+  background: #eef1f6;
+  border: none;
+  overflow: visible;
+}
+
+.review-issue-card__ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.review-issue-card__ai-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #262626;
+}
+
+.review-issue-card__ai-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(90deg, #7b5cff 0%, #3671ff 100%);
+}
+
+.review-issue-card__ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.review-issue-card__ai-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: #3671ff;
+  border-radius: 2px;
+}
+
+.review-issue-card__ai-action:hover:not(:disabled) {
+  color: #1f54d4;
+  background: transparent;
+}
+
+.review-issue-card__ai-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.review-issue-card__ai-action--apply {
+  color: #3671ff;
+}
+
+.review-issue-card__ai-body {
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.review-issue-card__ai-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #262626;
+  white-space: pre-wrap;
+}
+
+.review-issue-card__ai-body .editable-suggestion-wrap {
+  min-height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.review-issue-card__ai-body .editable-suggestion-wrap--focused {
+  background: transparent;
+  border: none;
+}
+
+.review-issue-card__ai-body .editable-suggestion,
+.review-issue-card__ai-body .editable-suggestion-shadow {
+  font-size: 13px;
+  line-height: 20px;
+  color: #262626;
+}

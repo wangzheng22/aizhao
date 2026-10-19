@@ -1,8 +1,6 @@
 import type { ResolvedSmartReviewIssue } from '../../types/smartReview';
 import type { SuggestionEditHandlers } from '../../types/suggestionEdit';
-import { EditableSuggestion } from './shared/EditableSuggestion';
-import { SuggestionSourceBadge } from './shared/SuggestionSourceBadge';
-import './SmartReviewCard.css';
+import { ReviewIssueCard } from './ReviewIssueCard';
 
 type SmartReviewCardProps = {
   issue: ResolvedSmartReviewIssue;
@@ -10,6 +8,13 @@ type SmartReviewCardProps = {
   interactive?: boolean;
   suggestionEdit?: SuggestionEditHandlers;
   onClick?: () => void;
+  onAddToConfirmList?: (issueId: string) => void;
+  onApplySuggestion?: (issueId: string, suggestion: string) => void;
+  onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
+  inConfirmList?: boolean;
+  showConfirmCheckbox?: boolean;
+  confirmChecked?: boolean;
+  onConfirmCheckedChange?: (checked: boolean) => void;
 };
 
 export function SmartReviewCard({
@@ -18,86 +23,38 @@ export function SmartReviewCard({
   interactive = true,
   suggestionEdit,
   onClick,
+  onAddToConfirmList,
+  onApplySuggestion,
+  onRegenerateSuggestion,
+  inConfirmList,
+  showConfirmCheckbox,
+  confirmChecked,
+  onConfirmCheckedChange,
 }: SmartReviewCardProps) {
-  const className = [
-    'smart-review-card',
-    active ? 'smart-review-card--active' : '',
-    issue.anchor ? '' : 'smart-review-card--unlinked',
-    interactive ? 'smart-review-card--interactive' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const suggestionText = suggestionEdit
-    ? suggestionEdit.getSuggestionText(issue.id, issue.suggestion)
-    : issue.suggestion;
-
-  const isManual = suggestionEdit
-    ? suggestionEdit.isManualSuggestion(issue.id, issue.suggestion)
-    : false;
-
   return (
-    <article
-      data-card-id={issue.id}
-      className={className}
-      onClick={interactive ? onClick : undefined}
-      onKeyDown={
-        interactive
-          ? (event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
-      }
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-    >
-      <div className="smart-review-card__header">
-        <span className={`smart-review-card__tag smart-review-card__tag--${issue.type}`}>
-          {issue.typeLabel}
-        </span>
-        <h3 className="smart-review-card__title">{issue.title}</h3>
-      </div>
-
-      <div className="smart-review-card__divider" aria-hidden="true" />
-
-      <div className="smart-review-card__section">
-        <span className="smart-review-card__label">原文节选：</span>
-        <div className="smart-review-card__excerpt-block">
-          <p className="smart-review-card__excerpt">{issue.excerpt}</p>
-        </div>
-      </div>
-
-      <div className="smart-review-card__section">
-        <span className="smart-review-card__label">修改建议：</span>
-        <div
-          className={[
-            'smart-review-card__suggestion-block',
-            suggestionEdit ? '' : 'smart-review-card__suggestion-block--static',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {suggestionEdit ? (
-            <EditableSuggestion
-              value={suggestionText}
-              originalValue={issue.suggestion}
-              onSave={(value) => suggestionEdit.onSuggestionSave(issue.id, issue.suggestion, value)}
-            />
-          ) : (
-            <p className="smart-review-card__suggestion">{issue.suggestion}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="smart-review-card__footer">
-        <span className="smart-review-card__category">
-          问题类型：<em>{issue.issueCategory}</em>
-        </span>
-        <SuggestionSourceBadge isManual={isManual} />
-      </div>
-    </article>
+    <ReviewIssueCard
+      issue={{
+        id: issue.id,
+        tone: 'issue',
+        tagLabel: issue.typeLabel || '问题项',
+        title: issue.title,
+        reason: issue.reason,
+        bases: issue.bases,
+        suggestion: issue.suggestion,
+        suggestionVariants: issue.suggestionVariants,
+        linked: Boolean(issue.anchor),
+      }}
+      active={active}
+      interactive={interactive}
+      suggestionEdit={suggestionEdit}
+      onClick={onClick}
+      onAddToConfirmList={onAddToConfirmList}
+      onApplySuggestion={onApplySuggestion}
+      onRegenerateSuggestion={onRegenerateSuggestion}
+      inConfirmList={inConfirmList}
+      showConfirmCheckbox={showConfirmCheckbox}
+      confirmChecked={confirmChecked}
+      onConfirmCheckedChange={onConfirmCheckedChange}
+    />
   );
 }

@@ -13,7 +13,7 @@ type TextSelectionToolbarProps = {
   onAiWrite: () => void;
 };
 
-const TOOLBAR_ESTIMATED_WIDTH = 248;
+const TOOLBAR_ESTIMATED_WIDTH = 220;
 
 export function TextSelectionToolbar({
   anchor,
@@ -59,15 +59,20 @@ export function TextSelectionToolbar({
       onMouseDown={(event) => event.preventDefault()}
     >
       <button type="button" className="text-selection-toolbar__action" onClick={onAiWrite}>
-        <span className="text-selection-toolbar__ai-icon" aria-hidden="true" />
-        <span>AI 帮我写</span>
+        <img
+          className="text-selection-toolbar__ai-icon"
+          src={`${import.meta.env.BASE_URL}icons/ai-badge.png`}
+          alt=""
+          aria-hidden="true"
+        />
+        <span>AI改写</span>
       </button>
       <span className="text-selection-toolbar__divider" aria-hidden="true" />
       <button type="button" className="text-selection-toolbar__action" onClick={onAddComment}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
           <path d="M7 2.5v9M2.5 7h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span>添加评论</span>
+        <span>添加批注</span>
       </button>
     </div>
   );

@@ -1,0 +1,155 @@
+.editable-doc {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  background: #eceff3;
+}
+
+.editable-doc--status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.editable-doc--error {
+  color: #ff4d4f;
+}
+
+.editable-doc__pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 40px 48px;
+}
+
+.editable-doc__page {
+  position: relative;
+  flex-shrink: 0;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e6e6e6;
+  overflow: hidden;
+}
+
+.editable-doc__page-body {
+  position: relative;
+  outline: none;
+  color: #111;
+  /* Match common CN bidding-doc face: Song / SimSun */
+  font-family: "SimSun", "Songti SC", "Noto Serif CJK SC", "Noto Serif SC", "STSong", serif;
+  cursor: text;
+  overflow: hidden;
+}
+
+.editable-doc__page-body:focus {
+  box-shadow: inset 0 0 0 1px rgba(54, 113, 255, 0.16);
+}
+
+.editable-doc__line {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
+  letter-spacing: 0;
+  color: inherit;
+}
+
+.editable-doc__line--center {
+  text-align: center;
+}
+
+.editable-doc__line--right {
+  text-align: right;
+}
+
+.editable-doc__line--heading {
+  letter-spacing: 0.02em;
+}
+
+.editable-doc__line--display {
+  letter-spacing: 0.12em;
+}
+
+.editable-doc__mark {
+  border-radius: 1px;
+  padding: 0 1px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.editable-doc__mark--completeness {
+  background: rgba(232, 47, 47, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(232, 47, 47, 0.55);
+}
+
+.editable-doc__mark--smart-review {
+  background: rgba(163, 18, 208, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(163, 18, 208, 0.55);
+}
+
+.editable-doc__mark--comment {
+  background: rgba(82, 196, 26, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(82, 196, 26, 0.55);
+}
+
+.editable-doc__mark--applied {
+  background: rgba(54, 113, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(54, 113, 255, 0.55);
+  color: #1f1f1f;
+}
+
+.editable-doc__mark--active {
+  box-shadow:
+    inset 0 0 0 1.5px #3671ff,
+    0 0 0 2px rgba(54, 113, 255, 0.18);
+}
+
+.editable-doc__mark--focused {
+  animation: editable-doc-mark-focus 1.4s ease-out;
+}
+
+@keyframes editable-doc-mark-focus {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px #3671ff,
+      0 0 0 0 rgba(54, 113, 255, 0.35);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1.5px #3671ff,
+      0 0 0 2px rgba(54, 113, 255, 0.18);
+  }
+}
+
+.editable-doc__page-label {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #999;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.editable-doc__page:hover .editable-doc__page-label {
+  opacity: 1;
+}
+
+@media (max-width: 1100px) {
+  .editable-doc__pages {
+    padding: 20px 12px 32px;
+  }
+}
