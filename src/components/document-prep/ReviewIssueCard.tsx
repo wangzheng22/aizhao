@@ -248,7 +248,7 @@ export function ReviewIssueCard({
                     strokeLinejoin="round"
                   />
                 </svg>
-                应用
+                采纳
               </button>
             </div>
           </div>
