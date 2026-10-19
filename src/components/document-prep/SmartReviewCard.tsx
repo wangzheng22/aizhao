@@ -12,6 +12,7 @@ type SmartReviewCardProps = {
   onApplySuggestion?: (issueId: string, suggestion: string) => void;
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
   inConfirmList?: boolean;
+  applied?: boolean;
   showConfirmCheckbox?: boolean;
   confirmChecked?: boolean;
   onConfirmCheckedChange?: (checked: boolean) => void;
@@ -27,6 +28,7 @@ export function SmartReviewCard({
   onApplySuggestion,
   onRegenerateSuggestion,
   inConfirmList,
+  applied,
   showConfirmCheckbox,
   confirmChecked,
   onConfirmCheckedChange,
@@ -52,6 +54,7 @@ export function SmartReviewCard({
       onApplySuggestion={onApplySuggestion}
       onRegenerateSuggestion={onRegenerateSuggestion}
       inConfirmList={inConfirmList}
+      applied={applied}
       showConfirmCheckbox={showConfirmCheckbox}
       confirmChecked={confirmChecked}
       onConfirmCheckedChange={onConfirmCheckedChange}

@@ -26,11 +26,14 @@ type ReviewIssueCardProps = {
   onAddToConfirmList?: (issueId: string) => void;
   onApplySuggestion?: (issueId: string, suggestion: string) => void;
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
+  /** Already in pending-confirm list (still visible in original filters) */
   inConfirmList?: boolean;
+  /** Suggestion has been applied to the document */
+  applied?: boolean;
+  /** Show export checkbox (confirm filter view) */
   showConfirmCheckbox?: boolean;
   confirmChecked?: boolean;
   onConfirmCheckedChange?: (checked: boolean) => void;
-  applied?: boolean;
 };
 
 export function ReviewIssueCard({
@@ -43,10 +46,10 @@ export function ReviewIssueCard({
   onApplySuggestion,
   onRegenerateSuggestion,
   inConfirmList = false,
+  applied = false,
   showConfirmCheckbox = false,
   confirmChecked = false,
   onConfirmCheckedChange,
-  applied = false,
 }: ReviewIssueCardProps) {
   const [activeBasis, setActiveBasis] = useState<ReviewBasis | null>(null);
   const [variantIndex, setVariantIndex] = useState(0);
@@ -58,15 +61,11 @@ export function ReviewIssueCard({
     active ? 'review-issue-card--active' : '',
     issue.linked === false ? 'review-issue-card--unlinked' : '',
     interactive ? 'review-issue-card--interactive' : '',
+    showConfirmCheckbox ? 'review-issue-card--selectable' : '',
     applied ? 'review-issue-card--applied' : '',
-    showConfirmCheckbox ? 'review-issue-card--confirm' : '',
   ]
     .filter(Boolean)
     .join(' ');
-
-  void inConfirmList;
-  void confirmChecked;
-  void onConfirmCheckedChange;
 
   const suggestionText = suggestionEdit
     ? suggestionEdit.getSuggestionText(issue.id, issue.suggestion)
@@ -102,8 +101,11 @@ export function ReviewIssueCard({
 
   const handleAddConfirm = (event: React.MouseEvent) => {
     stop(event);
+    if (applied || inConfirmList) return;
     onAddToConfirmList?.(issue.id);
   };
+
+  const confirmBtnLabel = applied ? '已调整' : inConfirmList ? '已加入' : '+待确认清单';
 
   return (
     <>
@@ -126,6 +128,16 @@ export function ReviewIssueCard({
       >
         <div className="review-issue-card__header">
           <div className="review-issue-card__title-row">
+            {showConfirmCheckbox && (
+              <label className="review-issue-card__check" onClick={stop} onKeyDown={stop}>
+                <input
+                  type="checkbox"
+                  checked={confirmChecked}
+                  onChange={(event) => onConfirmCheckedChange?.(event.target.checked)}
+                  aria-label="选择导出"
+                />
+              </label>
+            )}
             <span className={`review-issue-card__tag review-issue-card__tag--${issue.tone}`}>
               {issue.tagLabel}
             </span>
@@ -133,9 +145,21 @@ export function ReviewIssueCard({
               {issue.title}
             </h3>
           </div>
-          <button type="button" className="review-issue-card__confirm-btn" onClick={handleAddConfirm}>
-            +待确认清单
-          </button>
+          {!showConfirmCheckbox && (
+            <button
+              type="button"
+              className={[
+                'review-issue-card__confirm-btn',
+                applied || inConfirmList ? 'review-issue-card__confirm-btn--added' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              disabled={applied || inConfirmList}
+              onClick={handleAddConfirm}
+            >
+              {confirmBtnLabel}
+            </button>
+          )}
         </div>
 
         <p className="review-issue-card__reason">{issue.reason}</p>
@@ -182,7 +206,15 @@ export function ReviewIssueCard({
 
         <div className="review-issue-card__ai" onClick={stop} onMouseDown={stop}>
           <div className="review-issue-card__ai-header">
-            <span className="review-issue-card__ai-label">AI 修改建议</span>
+            <span className="review-issue-card__ai-label">
+              <img
+                className="review-issue-card__ai-badge"
+                src={`${import.meta.env.BASE_URL}icons/ai-badge.png`}
+                alt=""
+                aria-hidden="true"
+              />
+              修改建议：
+            </span>
             <div className="review-issue-card__ai-actions">
               <button
                 type="button"
@@ -201,10 +233,20 @@ export function ReviewIssueCard({
                 </svg>
                 {regenerating ? '生成中…' : '重新生成'}
               </button>
-              <button type="button" className="review-issue-card__ai-action review-issue-card__ai-action--apply" onClick={handleApply}>
+              <button
+                type="button"
+                className="review-issue-card__ai-action review-issue-card__ai-action--apply"
+                onClick={handleApply}
+              >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <circle cx="6" cy="6" r="4.3" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M3.8 6.1l1.5 1.5 2.9-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="1.5" y="1.5" width="9" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                  <path
+                    d="M4 6h4M6.2 4.2L8 6l-1.8 1.8"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 应用
               </button>

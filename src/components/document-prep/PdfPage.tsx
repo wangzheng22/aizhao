@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { FieldAnchor, FieldAnchorRect } from '../../types/completeness';
+import type { AppliedTextReplacement } from '../../types/textReplacement';
 import { PdfTextLayer } from './PdfTextLayer';
 
 export type PageHighlight = FieldAnchor & {
@@ -20,8 +21,10 @@ type PdfPageProps = {
   highlights?: PageHighlight[];
   showHighlights: boolean;
   markerIssues?: PageIssue[];
+  textReplacements?: AppliedTextReplacement[];
   enableTextSelection?: boolean;
   selectionHighlight?: FieldAnchorRect | null;
+  onHighlightClick?: (anchor: FieldAnchor) => void;
 };
 
 export function PdfPage({
@@ -31,8 +34,10 @@ export function PdfPage({
   highlights = [],
   showHighlights,
   markerIssues = [],
+  textReplacements = [],
   enableTextSelection = false,
   selectionHighlight = null,
+  onHighlightClick,
 }: PdfPageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,11 +67,12 @@ export function PdfPage({
       highlights.some((highlight) => highlight.active || highlight.focused) ||
       markerIssues.length > 0 ||
       (showHighlights && highlights.length > 0) ||
+      textReplacements.length > 0 ||
       selectionHighlight
     ) {
       setVisible(true);
     }
-  }, [highlights, markerIssues.length, showHighlights, selectionHighlight]);
+  }, [highlights, markerIssues.length, showHighlights, textReplacements.length, selectionHighlight]);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -163,6 +169,9 @@ export function PdfPage({
 
         {showHighlights &&
           highlights.map((highlight) => {
+            const replacement = textReplacements.find((item) => item.issueId === highlight.issueId);
+            if (replacement) return null;
+
             const toneClass =
               highlight.category === 'smart-review'
                 ? 'field-highlight--smart-review'
@@ -171,8 +180,9 @@ export function PdfPage({
                   : 'field-highlight--completeness';
 
             return (
-              <div
+              <button
                 key={highlight.issueId}
+                type="button"
                 data-issue-id={highlight.issueId}
                 className={[
                   'field-highlight',
@@ -188,11 +198,66 @@ export function PdfPage({
                   width: Math.max(highlight.rect.width * renderScale, 56),
                   height: Math.max(highlight.rect.height * renderScale, 26),
                 }}
+                aria-label="定位到审查项"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onHighlightClick?.(highlight);
+                }}
               >
                 <span className="field-highlight__box" aria-hidden="true" />
-              </div>
+              </button>
             );
           })}
+
+        {textReplacements.map((replacement) => {
+          const boxWidth = Math.max(replacement.rect.width * renderScale, 56);
+          const baseHeight = Math.max(replacement.rect.height * renderScale, 18);
+          const fontSize = Math.max(Math.min(baseHeight * 0.78, 16), 11);
+          const approxCharWidth = fontSize * 0.92;
+          const charsPerLine = Math.max(1, Math.floor(boxWidth / approxCharWidth));
+          const lineCount = Math.max(1, Math.ceil(replacement.text.length / charsPerLine));
+          const boxHeight = Math.max(baseHeight, lineCount * fontSize * 1.35);
+          const highlight = highlights.find((item) => item.issueId === replacement.issueId);
+
+          return (
+            <button
+              key={`replace-${replacement.issueId}`}
+              type="button"
+              data-issue-id={replacement.issueId}
+              className={[
+                'field-text-replacement',
+                highlight?.active ? 'field-text-replacement--active' : '',
+                highlight?.focused ? 'field-text-replacement--focused' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={{
+                left: replacement.rect.x * renderScale,
+                top: replacement.rect.y * renderScale,
+                width: boxWidth,
+                minHeight: boxHeight,
+                fontSize: `${fontSize}px`,
+                lineHeight: `${fontSize * 1.35}px`,
+              }}
+              aria-label="已替换的原文，点击定位审查项"
+              title={replacement.text}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onHighlightClick?.({
+                  issueId: replacement.issueId,
+                  pageNumber: replacement.pageNumber,
+                  rect: replacement.rect,
+                  markerLabel: '',
+                  category: replacement.category,
+                });
+              }}
+            >
+              {replacement.text}
+            </button>
+          );
+        })}
 
         {markerIssues.map((issue) => {
           if (!issue.anchor) return null;

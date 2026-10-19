@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { FieldAnchor, FieldAnchorRect } from '../../types/completeness';
+import type { AppliedTextReplacement } from '../../types/textReplacement';
 import { PdfPage } from './PdfPage';
 import './PdfDocumentViewer.css';
 
@@ -15,12 +16,14 @@ type PdfDocumentViewerProps = {
   numPages: number;
   anchors?: FieldAnchor[];
   markerIssues?: ViewerIssue[];
+  textReplacements?: AppliedTextReplacement[];
   activeIssueId?: string | null;
   focusedIssueId?: string | null;
   showHighlights?: boolean;
   layoutVersion?: number;
   enableTextSelection?: boolean;
   textSelection?: { pageNumber: number; rect: FieldAnchorRect } | null;
+  onHighlightClick?: (anchor: FieldAnchor) => void;
 };
 
 function measurePageWidth(viewer: HTMLElement) {
@@ -34,12 +37,14 @@ export function PdfDocumentViewer({
   numPages,
   anchors = [],
   markerIssues = [],
+  textReplacements = [],
   activeIssueId = null,
   focusedIssueId = null,
   showHighlights = false,
   layoutVersion = 0,
   enableTextSelection = false,
   textSelection = null,
+  onHighlightClick,
 }: PdfDocumentViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pageWidth, setPageWidth] = useState(860);
@@ -80,6 +85,7 @@ export function PdfDocumentViewer({
         {Array.from({ length: numPages }, (_, index) => {
           const pageNumber = index + 1;
           const pageMarkerIssues = markerIssues.filter((issue) => issue.anchor?.pageNumber === pageNumber);
+          const pageReplacements = textReplacements.filter((item) => item.pageNumber === pageNumber);
           const highlights = anchors
             .filter((anchor) => anchor.pageNumber === pageNumber)
             .map((anchor) => ({
@@ -97,10 +103,12 @@ export function PdfDocumentViewer({
               highlights={highlights}
               showHighlights={showHighlights}
               markerIssues={pageMarkerIssues}
+              textReplacements={pageReplacements}
               enableTextSelection={enableTextSelection}
               selectionHighlight={
                 textSelection?.pageNumber === pageNumber ? textSelection.rect : null
               }
+              onHighlightClick={onHighlightClick}
             />
           );
         })}

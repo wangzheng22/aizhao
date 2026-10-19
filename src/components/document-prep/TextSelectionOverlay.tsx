@@ -35,6 +35,19 @@ function getPageElement(pageNumber: number) {
 
 function getToolbarPosition(selection: SelectionLike, workspace: HTMLElement): ToolbarPosition | null {
   const workspaceRect = workspace.getBoundingClientRect();
+  const pageElement = getPageElement(selection.pageNumber);
+
+  // Prefer page-relative rects so position stays correct while scrolling.
+  if (pageElement && 'pageRects' in selection && selection.pageRects?.length) {
+    const pageRect = pageElement.getBoundingClientRect();
+    const last = selection.pageRects[selection.pageRects.length - 1];
+    const leftMost = Math.min(...selection.pageRects.map((rect) => rect.x));
+    const rightMost = Math.max(...selection.pageRects.map((rect) => rect.x + rect.width));
+    return {
+      top: pageRect.top - workspaceRect.top + last.y + last.height + 8,
+      left: pageRect.left - workspaceRect.left + (leftMost + rightMost) / 2,
+    };
+  }
 
   if ('clientRect' in selection && selection.clientRect) {
     return {
@@ -43,10 +56,7 @@ function getToolbarPosition(selection: SelectionLike, workspace: HTMLElement): T
     };
   }
 
-  if (!('rect' in selection)) return null;
-
-  const pageElement = getPageElement(selection.pageNumber);
-  if (!pageElement) return null;
+  if (!pageElement || !('rect' in selection)) return null;
 
   const surface =
     pageElement.querySelector<HTMLElement>('.editable-doc__page-body') ||

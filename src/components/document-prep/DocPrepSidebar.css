@@ -29,6 +29,57 @@
   overflow: hidden;
 }
 
+.doc-prep-sidebar__tabs {
+  display: flex;
+  flex-shrink: 0;
+  height: 31px;
+  margin: 12px 10px 0;
+}
+
+.doc-prep-sidebar__tab {
+  flex: 1;
+  height: 31px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  margin-left: -1px;
+  transition: background 0.2s;
+}
+
+.doc-prep-sidebar__tab:first-child {
+  margin-left: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.doc-prep-sidebar__tab:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.doc-prep-sidebar__tab--active {
+  background: #f0f1f3;
+  position: relative;
+  z-index: 1;
+}
+
+.doc-prep-sidebar__tab--disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+
+.doc-prep-sidebar__tab--disabled:hover {
+  background: #fff;
+}
+
+.doc-prep-sidebar__panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .doc-prep-sidebar__tip {
   display: flex;
   gap: 8px;

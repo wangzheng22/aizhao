@@ -44,9 +44,9 @@
 }
 
 .text-selection-toolbar__ai-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: conic-gradient(from 180deg, #3671ff, #9254de, #ff7875, #3671ff);
+  width: 23px;
+  height: 13px;
   flex-shrink: 0;
+  object-fit: contain;
+  display: block;
 }

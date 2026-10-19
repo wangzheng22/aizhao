@@ -91,6 +91,24 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
 
+.doc-prep-header__btn--re-review {
+  background: #ff4d8d;
+  color: #fff;
+}
+
+.doc-prep-header__btn--re-review:hover:not(:disabled) {
+  background: #ff3380;
+}
+
+.doc-prep-header__btn--re-review:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.doc-prep-header__btn--re-reviewing {
+  background: #e03a78;
+}
+
 .doc-prep-header__btn-icon {
   display: block;
   width: 12px;

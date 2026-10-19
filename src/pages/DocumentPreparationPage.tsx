@@ -81,6 +81,11 @@ export function DocumentPreparationPage() {
         if (next >= 100) {
           clearProgressTimer();
           setReviewProgressActive(false);
+          // Briefly hold at 100%, then hide the bar
+          window.setTimeout(() => {
+            setReviewProgressVisible(false);
+            setReviewProgress(0);
+          }, 280);
           onDone?.();
         }
       }, 32);
@@ -188,10 +193,10 @@ export function DocumentPreparationPage() {
     if (!documentGenerated || generating || updatingSupplement || reReviewing) return;
 
     setReReviewing(true);
+    setUserComments([]);
+    setPreviewKey((key) => key + 1);
     pushNotice('正在重新评审当前招标文件…');
     runReviewProgress(RE_REVIEW_DELAY_MS, () => {
-      setPreviewKey((key) => key + 1);
-      setUserComments([]);
       setReReviewing(false);
       pushNotice(`已重新评审文件，重新评审当前招标文件 ${formatNoticeTime()}`);
     });
@@ -229,11 +234,7 @@ export function DocumentPreparationPage() {
 
   useEffect(() => () => clearProgressTimer(), [clearProgressTimer]);
 
-  const showProgressBar =
-    reviewProgressVisible ||
-    completedSteps.includes('文件上传') ||
-    documentGenerated ||
-    reviewProgressActive;
+  const showProgressBar = reviewProgressVisible || reviewProgressActive;
 
   return (
     <div className={`doc-prep-page${showProgressBar ? ' doc-prep-page--with-progress' : ''}`}>
@@ -299,7 +300,7 @@ export function DocumentPreparationPage() {
         <DocPrepPreview
           key={previewKey}
           documentGenerated={documentGenerated}
-          generating={generating || reReviewing}
+          generating={generating}
           updatingSupplement={updatingSupplement}
           sidebarOpen={sidebarOpen}
           userComments={userComments}

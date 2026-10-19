@@ -43,15 +43,10 @@
   font-weight: 500;
 }
 
-.smart-review-card__tag--risk {
-  color: #fff;
-  background: #722ed1;
-}
-
+.smart-review-card__tag--risk,
 .smart-review-card__tag--optimization {
-  color: #722ed1;
-  background: #f9f0ff;
-  border: 1px solid #d3adf7;
+  color: #fff;
+  background: #a312d0;
 }
 
 .smart-review-card__title {

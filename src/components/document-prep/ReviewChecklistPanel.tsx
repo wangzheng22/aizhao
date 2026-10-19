@@ -78,6 +78,11 @@ export function ReviewChecklistPanel({
   const [confirmIds, setConfirmIds] = useState<string[]>([]);
   const [selectedConfirmIds, setSelectedConfirmIds] = useState<string[]>([]);
   const [bumpAnimKey, setBumpAnimKey] = useState(0);
+  const [decrementAnim, setDecrementAnim] = useState<{
+    key: number;
+    targets: Array<'all' | 'missing' | 'issue'>;
+  } | null>(null);
+  const prevAppliedRef = useRef<string[]>(appliedIssueIds);
 
   useEffect(() => {
     if (draftCommentId) {
@@ -151,23 +156,39 @@ export function ReviewChecklistPanel({
 
   useEffect(() => {
     setSelectedConfirmIds((prev) => {
-      const prevSet = new Set(prev);
-      if (prev.length === 0) return [...confirmIds];
-      const result = confirmIds.filter((id) => prevSet.has(id) || !prev.includes(id));
-      const withNew = [...new Set([...result, ...confirmIds.filter((id) => !prevSet.has(id))])];
-      return withNew.filter((id) => confirmIds.includes(id));
+      const confirmSet = new Set(confirmIds);
+      const kept = prev.filter((id) => confirmSet.has(id));
+      const newlyAdded = confirmIds.filter((id) => !prev.includes(id));
+      return [...kept, ...newlyAdded];
     });
   }, [confirmIds]);
 
   const appliedIdSet = useMemo(() => new Set(appliedIssueIds), [appliedIssueIds]);
+
   const openMissingIssues = useMemo(
     () => missingIssues.filter((issue) => !appliedIdSet.has(issue.id)),
     [missingIssues, appliedIdSet],
   );
+
   const openProblemIssues = useMemo(
     () => problemIssues.filter((issue) => !appliedIdSet.has(issue.id)),
     [problemIssues, appliedIdSet],
   );
+
+  useEffect(() => {
+    const prev = new Set(prevAppliedRef.current);
+    const newlyApplied = appliedIssueIds.filter((id) => !prev.has(id));
+    prevAppliedRef.current = appliedIssueIds;
+    if (!newlyApplied.length) return;
+
+    const targets = new Set<'all' | 'missing' | 'issue'>(['all']);
+    newlyApplied.forEach((id) => {
+      if (missingIssues.some((issue) => issue.id === id)) targets.add('missing');
+      if (problemIssues.some((issue) => issue.id === id)) targets.add('issue');
+    });
+
+    setDecrementAnim({ key: Date.now(), targets: [...targets] });
+  }, [appliedIssueIds, missingIssues, problemIssues]);
 
   const counts = {
     all: openMissingIssues.length + openProblemIssues.length,
@@ -201,11 +222,9 @@ export function ReviewChecklistPanel({
     confirmIds.length > 0 && confirmIds.every((id) => selectedConfirmIds.includes(id));
 
   const handleAddToConfirm = (issueId: string) => {
-    setConfirmIds((prev) => {
-      if (prev.includes(issueId)) return prev;
-      setBumpAnimKey((key) => key + 1);
-      return [...prev, issueId];
-    });
+    if (confirmIds.includes(issueId)) return;
+    setConfirmIds((prev) => [...prev, issueId]);
+    setBumpAnimKey((key) => key + 1);
     onAddToConfirmList?.(issueId);
   };
 
@@ -276,6 +295,7 @@ export function ReviewChecklistPanel({
       onApplySuggestion,
       onRegenerateSuggestion,
       inConfirmList: confirmIds.includes(entry.id),
+      applied: appliedIdSet.has(entry.id),
       showConfirmCheckbox: filter === 'confirm',
       confirmChecked: selectedConfirmIds.includes(entry.id),
       onConfirmCheckedChange: (checked: boolean) => handleToggleCardSelect(entry.id, checked),
@@ -339,7 +359,18 @@ export function ReviewChecklistPanel({
               onClick={() => setFilter(item.key)}
             >
               <span>{item.label}</span>
-              <em>{counts[item.key]}</em>
+              <em className="review-checklist__filter-count">
+                {counts[item.key]}
+                {decrementAnim?.targets.includes(item.key) && (
+                  <i
+                    key={`${decrementAnim.key}-${item.key}`}
+                    className="review-checklist__count-bump review-checklist__count-bump--down"
+                    aria-hidden="true"
+                  >
+                    -1
+                  </i>
+                )}
+              </em>
             </button>
           ))}
         </div>

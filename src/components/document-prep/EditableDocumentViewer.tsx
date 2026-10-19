@@ -4,10 +4,14 @@ import type { FieldAnchor } from '../../types/completeness';
 import {
   buildMarkedHtml,
   extractEditableDocument,
+  type EditableDocPage,
   type EditableDocument,
   type IssueMarkSpec,
 } from '../../utils/extractEditableDocument';
 import './EditableDocumentViewer.css';
+
+/** Render width for A4-like pages (keeps ~1:1 with PDF point scale at 96dpi) */
+export const EDITABLE_PAGE_WIDTH = 794;
 
 export type EditableSelectionRect = {
   x: number;
@@ -19,8 +23,10 @@ export type EditableSelectionRect = {
 export type EditableSelection = {
   text: string;
   pageNumber: number;
+  /** Bounding box in viewport coordinates (toolbar anchor) */
   clientRect: DOMRect;
-  pageRects?: EditableSelectionRect[];
+  /** Highlight boxes relative to the page element */
+  pageRects: EditableSelectionRect[];
 };
 
 type EditableDocumentViewerProps = {
@@ -33,15 +39,30 @@ type EditableDocumentViewerProps = {
   onSelectionChange?: (selection: EditableSelection | null) => void;
 };
 
-function formatPageHtml(markedJoined: string, lines: { fontSize: number; x: number }[]) {
+function formatPageHtml(markedJoined: string, page: EditableDocPage, scale: number) {
   const parts = markedJoined.split('\n');
   return parts
     .map((part, index) => {
-      const line = lines[index];
-      const fontSize = line ? Math.max(12, Math.min(line.fontSize * 1.15, 22)) : 14;
-      const indent = line ? Math.max(0, Math.min(line.x * 0.35, 120)) : 0;
-      const isTitle = fontSize >= 18;
-      return `<p class="editable-doc__line${isTitle ? ' editable-doc__line--title' : ''}" style="font-size:${fontSize}px;padding-left:${indent}px">${part || '&nbsp;'}</p>`;
+      const line = page.lines[index];
+      if (!line) return '';
+
+      const fontSize = Math.max(9, line.fontSize * scale);
+      const left = line.x * scale;
+      const top = line.y * scale;
+      // Keep enough width for wrapping when AI suggestions are longer than the original span
+      const maxRight = page.width * scale - 36 * scale;
+      const width = Math.max(line.width * scale + 4, Math.min(maxRight - left, page.width * scale * 0.82));
+      const lineHeight = fontSize * (line.fontSize >= 20 ? 1.25 : 1.15);
+      const classes = [
+        'editable-doc__line',
+        line.align !== 'left' ? `editable-doc__line--${line.align}` : '',
+        line.fontSize >= 20 ? 'editable-doc__line--display' : '',
+        line.fontSize >= 14 && line.fontSize < 20 ? 'editable-doc__line--heading' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      return `<div class="${classes}" style="left:${left}px;top:${top}px;width:${width}px;font-size:${fontSize}px;line-height:${lineHeight}px;font-weight:${line.bold ? 700 : 400}">${part || '&nbsp;'}</div>`;
     })
     .join('');
 }
@@ -61,6 +82,8 @@ export function EditableDocumentViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hydratedKeyRef = useRef<string>('');
+  const appliedRef = useRef(appliedTexts);
+  appliedRef.current = appliedTexts;
 
   useEffect(() => {
     let cancelled = false;
@@ -89,20 +112,44 @@ export function EditableDocumentViewer({
 
   // Hydrate HTML once per document + marks fingerprint (do not rebuild after user edits)
   useEffect(() => {
-    if (!doc) return;
+    if (!doc) return undefined;
 
-    const fingerprint = `${doc.pages.length}:${marks.map((m) => m.id).join(',')}`;
-    if (hydratedKeyRef.current === fingerprint) return;
-    hydratedKeyRef.current = fingerprint;
+    const fingerprint = `${doc.pages.length}:${marks.map((m) => `${m.id}:${m.searchText}`).join('|')}`;
+    if (hydratedKeyRef.current === fingerprint) return undefined;
 
-    doc.pages.forEach((page) => {
-      const body = bodyRefs.current[page.pageNumber];
-      if (!body) return;
-      const plain = page.lines.map((line) => line.text).join('\n');
-      const marked = buildMarkedHtml(plain, marks, appliedTexts);
-      body.innerHTML = formatPageHtml(marked, page.lines);
-    });
-  }, [doc, marks, appliedTexts]);
+    const hydrate = () => {
+      let ready = true;
+      doc.pages.forEach((page) => {
+        if (!bodyRefs.current[page.pageNumber]) ready = false;
+      });
+      if (!ready) return false;
+
+      hydratedKeyRef.current = fingerprint;
+      doc.pages.forEach((page) => {
+        const body = bodyRefs.current[page.pageNumber];
+        if (!body) return;
+        const scale = EDITABLE_PAGE_WIDTH / page.width;
+        body.style.width = `${EDITABLE_PAGE_WIDTH}px`;
+        body.style.height = `${page.height * scale}px`;
+        const plain = page.lines.map((line) => line.text).join('\n');
+        const marked = buildMarkedHtml(plain, marks, appliedRef.current);
+        body.innerHTML = formatPageHtml(marked, page, scale);
+      });
+      return true;
+    };
+
+    if (hydrate()) return undefined;
+
+    let attempts = 0;
+    let frame = 0;
+    const retry = () => {
+      attempts += 1;
+      if (hydrate() || attempts > 30) return;
+      frame = window.requestAnimationFrame(retry);
+    };
+    frame = window.requestAnimationFrame(retry);
+    return () => window.cancelAnimationFrame(frame);
+  }, [doc, marks]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -146,7 +193,7 @@ export function EditableDocumentViewer({
     const root = rootRef.current;
     if (!root || !onSelectionChange) return undefined;
 
-    const refresh = () => {
+    const commitSelection = () => {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
         onSelectionChange(null);
@@ -171,39 +218,55 @@ export function EditableDocumentViewer({
           : range.commonAncestorContainer.parentElement
       )?.closest<HTMLElement>('[data-page]');
 
-      const pageNumber = Number(pageEl?.dataset.page) || 1;
+      if (!pageEl) {
+        onSelectionChange(null);
+        return;
+      }
+
+      const pageNumber = Number(pageEl.dataset.page) || 1;
       const clientRect = range.getBoundingClientRect();
       if (clientRect.width < 1 || clientRect.height < 1) {
         onSelectionChange(null);
         return;
       }
 
-      const pageRects =
-        pageEl != null
-          ? Array.from(range.getClientRects())
-              .filter((rect) => rect.width >= 1 && rect.height >= 1)
-              .map((rect) => {
-                const pageRect = pageEl.getBoundingClientRect();
-                return {
-                  x: rect.left - pageRect.left,
-                  y: rect.top - pageRect.top,
-                  width: rect.width,
-                  height: rect.height,
-                };
-              })
-          : undefined;
+      const pageRect = pageEl.getBoundingClientRect();
+      const pageRects = Array.from(range.getClientRects())
+        .filter((rect) => rect.width >= 1 && rect.height >= 1)
+        .map((rect) => ({
+          x: rect.left - pageRect.left,
+          y: rect.top - pageRect.top,
+          width: rect.width,
+          height: rect.height,
+        }));
+
+      if (!pageRects.length) {
+        onSelectionChange(null);
+        return;
+      }
 
       onSelectionChange({ text, pageNumber, clientRect, pageRects });
     };
 
     const onMouseUp = () => {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(refresh));
+      window.requestAnimationFrame(() => window.requestAnimationFrame(commitSelection));
     };
 
-    document.addEventListener('selectionchange', refresh);
+    const onDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.text-selection-toolbar')) return;
+      if (root.contains(target)) {
+        // New drag inside the document — hide previous toolbar until mouseup.
+        onSelectionChange(null);
+        return;
+      }
+      onSelectionChange(null);
+    };
+
+    document.addEventListener('mousedown', onDocumentMouseDown);
     root.addEventListener('mouseup', onMouseUp);
     return () => {
-      document.removeEventListener('selectionchange', refresh);
+      document.removeEventListener('mousedown', onDocumentMouseDown);
       root.removeEventListener('mouseup', onMouseUp);
     };
   }, [onSelectionChange]);
@@ -227,23 +290,30 @@ export function EditableDocumentViewer({
   return (
     <div ref={rootRef} className="editable-doc">
       <div className="editable-doc__pages">
-        {doc.pages.map((page) => (
-          <section
-            key={page.pageNumber}
-            id={`doc-page-${page.pageNumber}`}
-            data-page={page.pageNumber}
-            className="editable-doc__page"
-          >
-            <div
-              ref={(node) => setBodyRef(page.pageNumber, node)}
-              className="editable-doc__page-body"
-              contentEditable
-              suppressContentEditableWarning
-              spellCheck={false}
-            />
-            <span className="editable-doc__page-label">第 {page.pageNumber} 页</span>
-          </section>
-        ))}
+        {doc.pages.map((page) => {
+          const scale = EDITABLE_PAGE_WIDTH / page.width;
+          const pageHeight = page.height * scale;
+
+          return (
+            <section
+              key={page.pageNumber}
+              id={`doc-page-${page.pageNumber}`}
+              data-page={page.pageNumber}
+              className="editable-doc__page"
+              style={{ width: EDITABLE_PAGE_WIDTH, height: pageHeight }}
+            >
+              <div
+                ref={(node) => setBodyRef(page.pageNumber, node)}
+                className="editable-doc__page-body"
+                contentEditable
+                suppressContentEditableWarning
+                spellCheck={false}
+                style={{ width: EDITABLE_PAGE_WIDTH, height: pageHeight }}
+              />
+              <span className="editable-doc__page-label">第 {page.pageNumber} 页</span>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

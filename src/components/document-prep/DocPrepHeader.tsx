@@ -33,9 +33,6 @@ export function DocPrepHeader({
   onExport,
   onTraceReport,
 }: DocPrepHeaderProps) {
-  void reReviewEnabled;
-  void reReviewing;
-  void onReReview;
   const [displayNotice, setDisplayNotice] = useState<HeaderNotice>(null);
   const [exiting, setExiting] = useState(false);
   const [entering, setEntering] = useState(false);
@@ -118,6 +115,36 @@ export function DocPrepHeader({
             />
           </svg>
           <span>项目信息</span>
+        </button>
+
+        <button
+          type="button"
+          className={[
+            'doc-prep-header__btn',
+            'doc-prep-header__btn--re-review',
+            reReviewing ? 'doc-prep-header__btn--re-reviewing' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          disabled={!reReviewEnabled || reReviewing}
+          onClick={onReReview}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M11.5 7A4.5 4.5 0 1 1 9.4 3.2"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+            <path
+              d="M9.2 1.6v2.4H11.6"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>{reReviewing ? '评审中…' : '重新评审'}</span>
         </button>
 
         <button type="button" className="doc-prep-header__btn" onClick={onSave}>

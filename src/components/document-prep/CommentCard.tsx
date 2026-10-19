@@ -22,9 +22,20 @@ export function CommentCard({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!autoFocus || !textareaRef.current) return;
-    textareaRef.current.focus();
-  }, [autoFocus]);
+    if (!autoFocus) return undefined;
+
+    const focusInput = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    };
+
+    // Panel may still be expanding / filtering when the draft card mounts.
+    const timers = [0, 120, 320].map((delay) => window.setTimeout(focusInput, delay));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [autoFocus, comment.id]);
 
   const stopPropagation = (event: React.SyntheticEvent) => {
     event.stopPropagation();
@@ -52,13 +63,13 @@ export function CommentCard({
     >
       <div className="comment-card__top">
         <div className="comment-card__quote-wrap">
-          <span className="comment-card__tag">评论</span>
+          <span className="comment-card__tag">批注项</span>
           <p className="comment-card__quote">{comment.selectedText}</p>
         </div>
         <button
           type="button"
           className="comment-card__delete"
-          aria-label="删除评论"
+          aria-label="删除批注"
           onClick={(event) => {
             event.stopPropagation();
             onDelete();
@@ -85,8 +96,8 @@ export function CommentCard({
         ref={textareaRef}
         className="comment-card__content"
         value={comment.content}
-        placeholder="请输入评论内容"
-        aria-label="评论内容"
+        placeholder="请输入批注内容"
+        aria-label="批注内容"
         rows={2}
         onChange={(event) => onContentChange(event.target.value)}
         onClick={stopPropagation}

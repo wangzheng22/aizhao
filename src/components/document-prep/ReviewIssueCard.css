@@ -28,6 +28,50 @@
   opacity: 0.72;
 }
 
+.review-issue-card--applied {
+  background: #f5f5f5;
+  border-color: #e8e8e8;
+  box-shadow: none;
+  color: #8c8c8c;
+}
+
+.review-issue-card--applied.review-issue-card--active {
+  border-color: #bfbfbf;
+  box-shadow: none;
+}
+
+.review-issue-card--applied .review-issue-card__title,
+.review-issue-card--applied .review-issue-card__reason {
+  color: #8c8c8c;
+}
+
+.review-issue-card--applied .review-issue-card__tag {
+  background: #bfbfbf;
+}
+
+.review-issue-card--applied .review-issue-card__basis {
+  color: #8c8c8c;
+}
+
+.review-issue-card--applied .review-issue-card__ai {
+  background: #ebebeb;
+}
+
+.review-issue-card--applied .review-issue-card__ai-badge {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.review-issue-card--applied .review-issue-card__ai-action {
+  color: #8c8c8c;
+  pointer-events: none;
+}
+
+.review-issue-card--applied .review-issue-card__ai-body {
+  background: #fafafa;
+  border-color: #e0e0e0;
+}
+
 .review-issue-card__header {
   display: flex;
   align-items: flex-start;
@@ -189,18 +233,11 @@
 }
 
 .review-issue-card__ai-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  letter-spacing: 0.02em;
-  color: #fff;
-  background: linear-gradient(90deg, #7b5cff 0%, #3671ff 100%);
+  display: block;
+  width: 23px;
+  height: 13px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .review-issue-card__ai-actions {
