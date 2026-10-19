@@ -165,7 +165,7 @@ export function DocPrepHeader({
         </button>
 
         <button type="button" className="doc-prep-header__btn doc-prep-header__btn--wide">
-          V1.0.0 版本
+          V2.0.0 版本
           <svg width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true">
             <path d="M1 1l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
