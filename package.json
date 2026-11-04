@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "build:share": "node scripts/package-share-preview.mjs",
     "deploy:gitee": "npm run build && node scripts/deploy-gitee.mjs",
     "deploy:github": "node scripts/deploy-github.mjs"
   },

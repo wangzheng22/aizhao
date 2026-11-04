@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { FieldAnchor } from '../../types/completeness';
 import {
-  buildMarkedHtml,
+  buildPageLinesMarkedHtml,
   extractEditableDocument,
   type EditableDocPage,
   type EditableDocument,
@@ -39,9 +39,8 @@ type EditableDocumentViewerProps = {
   onSelectionChange?: (selection: EditableSelection | null) => void;
 };
 
-function formatPageHtml(markedJoined: string, page: EditableDocPage, scale: number) {
-  const parts = markedJoined.split('\n');
-  return parts
+function formatPageHtml(lineHtmlParts: string[], page: EditableDocPage, scale: number) {
+  return lineHtmlParts
     .map((part, index) => {
       const line = page.lines[index];
       if (!line) return '';
@@ -114,7 +113,10 @@ export function EditableDocumentViewer({
   useEffect(() => {
     if (!doc) return undefined;
 
-    const fingerprint = `${doc.pages.length}:${marks.map((m) => `${m.id}:${m.searchText}`).join('|')}`;
+    const appliedKey = Object.entries(appliedRef.current)
+      .map(([id, text]) => `${id}=${text}`)
+      .join('|');
+    const fingerprint = `${doc.pages.length}:${marks.map((m) => `${m.id}:${m.searchText}:${m.pageHint ?? ''}`).join('|')}:${appliedKey}`;
     if (hydratedKeyRef.current === fingerprint) return undefined;
 
     const hydrate = () => {
@@ -125,15 +127,93 @@ export function EditableDocumentViewer({
       if (!ready) return false;
 
       hydratedKeyRef.current = fingerprint;
+      const placedGlobally = new Set<string>();
+      const pageRenderData: Array<{
+        page: EditableDocPage;
+        scale: number;
+        lineTexts: string[];
+        lineHtmlParts: string[];
+      }> = [];
+
       doc.pages.forEach((page) => {
         const body = bodyRefs.current[page.pageNumber];
         if (!body) return;
         const scale = EDITABLE_PAGE_WIDTH / page.width;
         body.style.width = `${EDITABLE_PAGE_WIDTH}px`;
         body.style.height = `${page.height * scale}px`;
-        const plain = page.lines.map((line) => line.text).join('\n');
-        const marked = buildMarkedHtml(plain, marks, appliedRef.current);
-        body.innerHTML = formatPageHtml(marked, page, scale);
+        const lineTexts = page.lines.map((line) => line.text);
+        let lineHtmlParts = buildPageLinesMarkedHtml(
+          lineTexts,
+          marks,
+          appliedRef.current,
+          page.pageNumber,
+        );
+
+        const placedOnPage = new Set<string>();
+        lineHtmlParts.forEach((html) => {
+          const re = /data-issue-id="([^"]+)"/g;
+          let match = re.exec(html);
+          while (match) {
+            placedOnPage.add(match[1]);
+            placedGlobally.add(match[1]);
+            match = re.exec(html);
+          }
+        });
+
+        const unplaced = marks.filter(
+          (mark) => mark.pageHint && !placedOnPage.has(mark.id),
+        );
+        if (unplaced.length) {
+          for (let i = 0; i < lineTexts.length; i += 1) {
+            if (lineHtmlParts[i].includes('data-issue-id')) continue;
+            const [fallbackLine] = buildPageLinesMarkedHtml(
+              [lineTexts[i]],
+              unplaced,
+              appliedRef.current,
+              page.pageNumber,
+              { ignorePageHint: true },
+            );
+            if (fallbackLine.includes('data-issue-id')) {
+              lineHtmlParts[i] = fallbackLine;
+              const idMatch = fallbackLine.match(/data-issue-id="([^"]+)"/);
+              if (idMatch) placedGlobally.add(idMatch[1]);
+            }
+          }
+        }
+
+        pageRenderData.push({ page, scale, lineTexts, lineHtmlParts });
+      });
+
+      const unplacedGlobal = marks.filter((mark) => !placedGlobally.has(mark.id));
+      if (unplacedGlobal.length) {
+        pageRenderData.forEach((entry) => {
+          const remaining = unplacedGlobal.filter((mark) => !placedGlobally.has(mark.id));
+          if (!remaining.length) return;
+
+          const retryParts = buildPageLinesMarkedHtml(
+            entry.lineTexts,
+            remaining,
+            appliedRef.current,
+            entry.page.pageNumber,
+            { ignorePageHint: true },
+          );
+
+          entry.lineHtmlParts = entry.lineTexts.map((_line, index) => {
+            const current = entry.lineHtmlParts[index];
+            const retry = retryParts[index];
+            if (!retry.includes('data-issue-id')) return current;
+            if (current.includes('data-issue-id')) return current;
+            const idMatch = retry.match(/data-issue-id="([^"]+)"/);
+            if (idMatch) placedGlobally.add(idMatch[1]);
+            return retry;
+          });
+        });
+      }
+
+      pageRenderData.forEach(({ page, scale, lineHtmlParts }) => {
+        const body = bodyRefs.current[page.pageNumber];
+        if (!body) return;
+        body.innerHTML = formatPageHtml(lineHtmlParts, page, scale);
       });
       return true;
     };
@@ -149,7 +229,7 @@ export function EditableDocumentViewer({
     };
     frame = window.requestAnimationFrame(retry);
     return () => window.cancelAnimationFrame(frame);
-  }, [doc, marks]);
+  }, [doc, marks, appliedTexts]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -319,7 +399,17 @@ export function EditableDocumentViewer({
   );
 }
 
-export function scrollToEditableIssue(issueId: string) {
+export function scrollToEditableIssue(issueId: string, pageHint?: number) {
+  if (pageHint) {
+    const inPage = document.querySelector<HTMLElement>(
+      `#doc-page-${pageHint} .editable-doc__mark[data-issue-id="${CSS.escape(issueId)}"]`,
+    );
+    if (inPage) {
+      inPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return true;
+    }
+  }
+
   const el = document.querySelector<HTMLElement>(
     `.editable-doc__mark[data-issue-id="${CSS.escape(issueId)}"]`,
   );

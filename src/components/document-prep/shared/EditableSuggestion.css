@@ -45,8 +45,9 @@
 .editable-suggestion {
   display: block;
   background: transparent;
-  resize: none;
+  resize: vertical;
   overflow: hidden;
+  min-height: 22px;
   color: #262626;
   cursor: text;
 }

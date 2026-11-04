@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCompletenessAnchors } from '../../hooks/useCompletenessAnchors';
-import { useResolvedComments } from '../../hooks/useResolvedComments';
 import { useSmartReviewAnchors } from '../../hooks/useSmartReviewAnchors';
 import { usePdfDocument } from '../../hooks/usePdfDocument';
-import { SAMPLE_PDF_URL } from '../../types/pdf';
-import type { Comment } from '../../types/comment';
+import { SAMPLE_PDF_URL, type TocItem } from '../../types/pdf';
 import type { FieldAnchor, ResolvedCompletenessIssue } from '../../types/completeness';
 import type { SuggestionEditHandlers } from '../../types/suggestionEdit';
 import type { ResolvedSmartReviewIssue } from '../../types/smartReview';
-import { commentToAnchor } from '../../utils/commentAnchors';
-import { formatCommentTime } from '../../utils/commentTime';
 import { sortIssuesByDocumentOrder } from '../../utils/issueDocumentOrder';
 import type { IssueMarkSpec } from '../../utils/extractEditableDocument';
 import { DocumentToc } from './DocumentToc';
@@ -22,16 +18,33 @@ import {
 } from './EditableDocumentViewer';
 import {
   ReviewChecklistPanel,
+  type ChapterLocateRequest,
   type ReviewFilter,
   type ReviewLocateRequest,
 } from './ReviewChecklistPanel';
+import { buildChapterReviewCards, flattenChapterFields } from '../../utils/buildChapterReviewCards';
+import {
+  buildChapterFieldMarks,
+  buildOkFieldMark,
+  fieldMarkCategoryForApply,
+} from '../../utils/chapterFieldMarks';
+import { applyMarkReplacement } from '../../utils/documentMarkApply';
+import { findTextAnchor } from '../../utils/pdfTextAnchor';
+import {
+  findTocItemForChapter,
+  findTocItemForPage,
+  getChapterDocumentPage,
+  resolveChapterIdFromTocTitle,
+} from '../../utils/tocChapterMatch';
+import type { ChapterFieldView } from '../../types/chapterReview';
+import type { UploadFiles } from '../../types/documentWorkflow';
+import { resolveExtractSourceFileName } from '../../utils/resolveExtractSourceFileName';
 import { TextSelectionOverlay } from './TextSelectionOverlay';
 import './DocPrepPreview.css';
 
-function filterForAnchorCategory(
-  category?: FieldAnchor['category'],
-): Exclude<ReviewFilter, 'confirm'> {
-  if (category === 'comment') return 'annotation';
+function filterForAnchorCategory(category?: FieldAnchor['category']): ReviewFilter {
+  if (category === 'completeness') return 'missing';
+  if (category === 'smart-review') return 'issue';
   return 'all';
 }
 
@@ -40,8 +53,8 @@ type DocPrepPreviewProps = {
   generating: boolean;
   updatingSupplement?: boolean;
   sidebarOpen: boolean;
-  userComments: Comment[];
-  onUserCommentsChange: (comments: Comment[]) => void;
+  uploadFiles?: UploadFiles;
+  projectName?: string;
   onNotice?: (text: string) => void;
 };
 
@@ -50,8 +63,8 @@ export function DocPrepPreview({
   generating,
   updatingSupplement = false,
   sidebarOpen,
-  userComments,
-  onUserCommentsChange,
+  uploadFiles = {},
+  projectName = '',
   onNotice,
 }: DocPrepPreviewProps) {
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -66,15 +79,22 @@ export function DocPrepPreview({
     issues: smartReviewIssueList,
     loading: smartReviewLoading,
   } = useSmartReviewAnchors(pdf);
-  const { comments: allComments } = useResolvedComments(pdf, userComments);
-
   const [tocOpen, setTocOpen] = useState(true);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [activePage, setActivePage] = useState(1);
+  const [pinnedTocItemId, setPinnedTocItemId] = useState<string | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [draftCommentId, setDraftCommentId] = useState<string | null>(null);
   const [locateRequest, setLocateRequest] = useState<ReviewLocateRequest | null>(null);
+  const [chapterLocateRequest, setChapterLocateRequest] = useState<ChapterLocateRequest | null>(
+    null,
+  );
   const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
+  const [activeMarkId, setActiveMarkId] = useState<string | null>(null);
+  const [pendingFieldLocate, setPendingFieldLocate] = useState<{
+    markId: string;
+    searchText: string;
+    pageHint?: number;
+  } | null>(null);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [editedSuggestions, setEditedSuggestions] = useState<Record<string, string>>({});
   const [appliedTexts, setAppliedTexts] = useState<Record<string, string>>({});
@@ -114,36 +134,127 @@ export function DocPrepPreview({
     [smartReviewIssueList],
   );
 
-  const orderedComments = useMemo(
-    () =>
-      sortIssuesByDocumentOrder(
-        allComments.map((comment) => ({ ...comment, anchor: commentToAnchor(comment) })),
-      ),
-    [allComments],
+  const appliedIssueIds = useMemo(() => Object.keys(appliedTexts), [appliedTexts]);
+
+  const extractSourceFileName = useMemo(
+    () => resolveExtractSourceFileName(uploadFiles, projectName),
+    [uploadFiles, projectName],
   );
 
+  const chapterReviewCards = useMemo(
+    () =>
+      buildChapterReviewCards(
+        completenessIssueList,
+        orderedSmartReviewIssues,
+        appliedIssueIds,
+        extractSourceFileName,
+      ),
+    [completenessIssueList, orderedSmartReviewIssues, appliedIssueIds, extractSourceFileName],
+  );
+
+  const chapterFields = useMemo(
+    () => flattenChapterFields(chapterReviewCards),
+    [chapterReviewCards],
+  );
+
+  const fieldByMarkId = useMemo(() => {
+    const map = new Map<string, ChapterFieldView>();
+    chapterFields.forEach((field) => {
+      map.set(field.markTargetId, field);
+      map.set(field.id, field);
+    });
+    return map;
+  }, [chapterFields]);
+
+  const fieldChapterIdByFieldId = useMemo(() => {
+    const map = new Map<string, string>();
+    chapterReviewCards.forEach((chapter) => {
+      chapter.fields.forEach((field) => {
+        map.set(field.id, chapter.id);
+        map.set(field.markTargetId, chapter.id);
+      });
+    });
+    return map;
+  }, [chapterReviewCards]);
+
+  const activeTocItemId = useMemo(() => {
+    if (pinnedTocItemId) return pinnedTocItemId;
+    return findTocItemForPage(toc, activePage)?.id ?? null;
+  }, [pinnedTocItemId, toc, activePage]);
+
   const issueMarks = useMemo((): IssueMarkSpec[] => {
-    const marks: IssueMarkSpec[] = [];
+    const fieldMarks = buildChapterFieldMarks(chapterReviewCards, {
+      includeStatuses: ['missing', 'issue'],
+    });
+    const covered = new Set(fieldMarks.map((mark) => mark.id));
+    const extras: IssueMarkSpec[] = [];
+
     openCompletenessIssues.forEach((issue) => {
-      if (issue.searchText) {
-        marks.push({
-          id: issue.id,
-          searchText: issue.searchText,
-          category: 'completeness',
-        });
-      }
+      if (!issue.searchText || covered.has(issue.id)) return;
+      extras.push({
+        id: issue.id,
+        searchText: issue.searchText,
+        category: 'field-missing',
+        pageHint: issue.pageHint,
+      });
     });
     orderedSmartReviewIssues.forEach((issue) => {
-      if (issue.searchText) {
-        marks.push({
-          id: issue.id,
-          searchText: issue.searchText,
-          category: 'smart-review',
-        });
-      }
+      if (!issue.searchText || covered.has(issue.id)) return;
+      const field = fieldByMarkId.get(issue.id);
+      if (field?.status === 'ok') return;
+      extras.push({
+        id: issue.id,
+        searchText: issue.searchText,
+        category: 'field-issue',
+        pageHint: issue.pageHint,
+      });
     });
+
+    const marks = [...fieldMarks, ...extras];
+
+    if (activeMarkId) {
+      const activeField = fieldByMarkId.get(activeMarkId);
+      const okMark = activeField ? buildOkFieldMark(activeField) : null;
+      if (okMark && !marks.some((mark) => mark.id === okMark.id)) {
+        marks.push(okMark);
+      }
+    }
+
+    appliedIssueIds.forEach((issueId) => {
+      if (marks.some((mark) => mark.id === issueId)) return;
+      const field = fieldByMarkId.get(issueId);
+      if (field?.searchText) {
+        marks.push({
+          id: field.markTargetId,
+          searchText: field.searchText,
+          category: 'field-ok',
+          pageHint: field.pageHint,
+        });
+        return;
+      }
+      const completeness = completenessIssueList.find((item) => item.id === issueId);
+      const smart = orderedSmartReviewIssues.find((item) => item.id === issueId);
+      const searchText = completeness?.searchText ?? smart?.searchText;
+      if (!searchText) return;
+      marks.push({
+        id: issueId,
+        searchText,
+        category: 'field-ok',
+        pageHint: completeness?.pageHint ?? smart?.pageHint,
+      });
+    });
+
     return marks;
-  }, [openCompletenessIssues, orderedSmartReviewIssues]);
+  }, [
+    chapterReviewCards,
+    openCompletenessIssues,
+    orderedSmartReviewIssues,
+    activeMarkId,
+    fieldByMarkId,
+    appliedIssueIds,
+    completenessIssueList,
+    orderedSmartReviewIssues,
+  ]);
 
   const highlightsLoading = completenessLoading || smartReviewLoading;
 
@@ -152,7 +263,55 @@ export function DocPrepPreview({
     scrollToEditablePage(pageNumber);
   }, []);
 
-  const focusIssue = useCallback((issueId: string) => {
+  const scrollReviewToChapter = useCallback(
+    (chapterId: string, fieldId?: string) => {
+      const expanding = !reviewOpen;
+      if (expanding) {
+        setReviewOpen(true);
+      }
+      setChapterLocateRequest((prev) => ({
+        chapterId,
+        fieldId,
+        token: (prev?.token ?? 0) + 1,
+        expanding,
+      }));
+    },
+    [reviewOpen],
+  );
+
+  const syncTocToChapter = useCallback(
+    (chapterId: string, pageFallback?: number) => {
+      const tocItem = findTocItemForChapter(chapterId, toc);
+      if (tocItem) {
+        setPinnedTocItemId(tocItem.id);
+        return;
+      }
+      if (pageFallback != null) {
+        const byPage = findTocItemForPage(toc, pageFallback);
+        if (byPage) setPinnedTocItemId(byPage.id);
+      }
+    },
+    [toc],
+  );
+
+  const handleTocItemClick = useCallback(
+    (item: TocItem) => {
+      setPinnedTocItemId(item.id);
+
+      const chapterId = resolveChapterIdFromTocTitle(item.title);
+      const bodyPage = chapterId
+        ? (getChapterDocumentPage(chapterId) ?? item.pageNumber)
+        : item.pageNumber;
+      scrollToPage(bodyPage);
+
+      if (chapterId) {
+        scrollReviewToChapter(chapterId);
+      }
+    },
+    [scrollToPage, scrollReviewToChapter],
+  );
+
+  const focusIssue = useCallback((issueId: string, pageHint?: number) => {
     setFocusedIssueId(null);
     window.requestAnimationFrame(() => {
       setFocusedIssueId(issueId);
@@ -160,34 +319,12 @@ export function DocPrepPreview({
 
     let attempts = 0;
     const retry = () => {
-      if (scrollToEditableIssue(issueId) || attempts >= 24) return;
+      if (scrollToEditableIssue(issueId, pageHint) || attempts >= 24) return;
       attempts += 1;
       window.requestAnimationFrame(retry);
     };
     window.setTimeout(retry, 80);
   }, []);
-
-  const handleAddToConfirmList = useCallback(
-    (issueId: string) => {
-      const title =
-        completenessIssueList.find((item) => item.id === issueId)?.title ||
-        smartReviewIssueList.find((item) => item.id === issueId)?.title ||
-        issueId;
-      onNotice?.(`已加入待确认清单：${title}`);
-    },
-    [onNotice, completenessIssueList, smartReviewIssueList],
-  );
-
-  const handleExportConfirmList = useCallback(
-    (items: { id: string; title: string; tagLabel: string; reason: string }[]) => {
-      if (!items.length) {
-        onNotice?.('请先勾选要导出的待确认项');
-        return;
-      }
-      onNotice?.(`已导出待确认清单（${items.length} 项）`);
-    },
-    [onNotice],
-  );
 
   const handleApplySuggestion = useCallback(
     (issueId: string, suggestion: string) => {
@@ -197,21 +334,45 @@ export function DocPrepPreview({
         return;
       }
 
-      const mark = document.querySelector(
-        `.editable-doc__mark[data-issue-id="${CSS.escape(issueId)}"]`,
-      );
-      if (!mark) {
+      const field = fieldByMarkId.get(issueId);
+      const completeness = completenessIssueList.find((item) => item.id === issueId);
+      const smart = orderedSmartReviewIssues.find((item) => item.id === issueId);
+      const searchText =
+        field?.searchText ?? completeness?.searchText ?? smart?.searchText ?? trimmed;
+      const pageHint = field?.pageHint ?? completeness?.pageHint ?? smart?.pageHint;
+      const category = field
+        ? fieldMarkCategoryForApply(field)
+        : completeness
+          ? 'field-missing'
+          : 'field-issue';
+
+      setAppliedTexts((prev) => ({ ...prev, [issueId]: trimmed }));
+
+      const applied = applyMarkReplacement({
+        markId: issueId,
+        newText: trimmed,
+        searchText,
+        pageHint,
+        category,
+      });
+
+      if (!applied) {
         onNotice?.('未找到可替换的原文位置');
         return;
       }
 
-      setAppliedTexts((prev) => ({ ...prev, [issueId]: trimmed }));
       const preview = trimmed.length > 36 ? `${trimmed.slice(0, 36)}…` : trimmed;
       onNotice?.(`已替换原文：${preview}`);
-      setActiveItemId(issueId);
-      focusIssue(issueId);
+      setActiveMarkId(issueId);
+      focusIssue(issueId, pageHint);
     },
-    [onNotice, focusIssue],
+    [
+      onNotice,
+      focusIssue,
+      fieldByMarkId,
+      completenessIssueList,
+      orderedSmartReviewIssues,
+    ],
   );
 
   const handleRegenerateSuggestion = useCallback(() => {
@@ -223,9 +384,15 @@ export function DocPrepPreview({
   }, []);
 
   const locateChecklistItem = useCallback(
-    (itemId: string, filter: Exclude<ReviewFilter, 'confirm'>) => {
+    (itemId: string, filter: ReviewFilter) => {
       const expanding = !reviewOpen;
       openReviewPanel();
+      const field = fieldByMarkId.get(itemId);
+      const pageHint =
+        field?.pageHint ??
+        openCompletenessIssues.find((item) => item.id === itemId)?.pageHint ??
+        orderedSmartReviewIssues.find((item) => item.id === itemId)?.pageHint;
+      if (pageHint) scrollToPage(pageHint);
       setActiveItemId(itemId);
       setLocateRequest((prev) => ({
         id: itemId,
@@ -233,111 +400,104 @@ export function DocPrepPreview({
         token: (prev?.token ?? 0) + 1,
         expanding,
       }));
-      focusIssue(itemId);
+      focusIssue(itemId, pageHint);
     },
-    [reviewOpen, openReviewPanel, focusIssue],
+    [
+      reviewOpen,
+      openReviewPanel,
+      focusIssue,
+      fieldByMarkId,
+      openCompletenessIssues,
+      orderedSmartReviewIssues,
+      scrollToPage,
+    ],
+  );
+
+  const handleFieldLabelClick = useCallback(
+    (chapterId: string, field: ChapterFieldView) => {
+      if (!field.searchText) {
+        onNotice?.('未找到可定位的原文片段');
+        return;
+      }
+      const locateMarkId = field.id;
+      const bodyPage =
+        field.pageHint ?? getChapterDocumentPage(chapterId) ?? undefined;
+      if (bodyPage) {
+        scrollToPage(bodyPage);
+      }
+      syncTocToChapter(chapterId, bodyPage);
+      scrollReviewToChapter(chapterId, field.id);
+      setActiveMarkId(locateMarkId);
+      setActiveItemId(field.issueId ?? field.id);
+      setPendingFieldLocate({
+        markId: locateMarkId,
+        searchText: field.searchText,
+        pageHint: field.pageHint ?? bodyPage,
+      });
+    },
+    [onNotice, scrollToPage, syncTocToChapter, scrollReviewToChapter],
   );
 
   const handleIssueMarkClick = useCallback(
-    (issueId: string) => {
-      const completeness = openCompletenessIssues.find((item) => item.id === issueId);
-      const smart = orderedSmartReviewIssues.find((item) => item.id === issueId);
+    (markId: string) => {
+      const field = fieldByMarkId.get(markId);
+      if (field) {
+        const chapterId = fieldChapterIdByFieldId.get(field.id);
+        if (chapterId) {
+          handleFieldLabelClick(chapterId, field);
+        }
+        if (field.issueId) {
+          const filter: ReviewFilter =
+            field.status === 'missing'
+              ? 'missing'
+              : field.status === 'issue'
+                ? 'issue'
+                : field.status === 'ok'
+                  ? 'ok'
+                  : 'all';
+          locateChecklistItem(field.issueId, filter);
+        }
+        return;
+      }
+
+      const completeness = openCompletenessIssues.find((item) => item.id === markId);
+      const smart = orderedSmartReviewIssues.find((item) => item.id === markId);
       const category = completeness
         ? 'completeness'
         : smart
           ? 'smart-review'
-          : getEditableIssueAnchor(issueId)?.category;
-      locateChecklistItem(issueId, filterForAnchorCategory(category));
+          : getEditableIssueAnchor(markId)?.category;
+      setActiveMarkId(markId);
+      locateChecklistItem(markId, filterForAnchorCategory(category));
     },
-    [openCompletenessIssues, orderedSmartReviewIssues, locateChecklistItem],
+    [
+      fieldByMarkId,
+      fieldChapterIdByFieldId,
+      handleFieldLabelClick,
+      openCompletenessIssues,
+      orderedSmartReviewIssues,
+      locateChecklistItem,
+    ],
   );
 
   const handleCompletenessIssueClick = useCallback(
     (issue: ResolvedCompletenessIssue) => {
+      if (issue.pageHint) scrollToPage(issue.pageHint);
       setActiveItemId(issue.id);
-      focusIssue(issue.id);
+      setActiveMarkId(issue.id);
+      focusIssue(issue.id, issue.pageHint);
     },
-    [focusIssue],
+    [focusIssue, scrollToPage],
   );
 
   const handleSmartReviewIssueClick = useCallback(
     (issue: ResolvedSmartReviewIssue) => {
+      if (issue.pageHint) scrollToPage(issue.pageHint);
       setActiveItemId(issue.id);
-      focusIssue(issue.id);
+      setActiveMarkId(issue.id);
+      focusIssue(issue.id, issue.pageHint);
     },
-    [focusIssue],
-  );
-
-  const handleCommentClick = useCallback(
-    (comment: Comment) => {
-      setActiveItemId(comment.id);
-      focusIssue(comment.id);
-    },
-    [focusIssue],
-  );
-
-  const clearSelection = useCallback(() => {
-    window.getSelection()?.removeAllRanges();
-    setSelection(null);
-  }, []);
-
-  const handleAddComment = useCallback(() => {
-    if (!selection) return;
-
-    const id = `comment-${Date.now()}`;
-    const pageEl = document.getElementById(`doc-page-${selection.pageNumber}`);
-    const pageRect = pageEl?.getBoundingClientRect();
-    const rect = selection.clientRect;
-
-    const newComment: Comment = {
-      id,
-      selectedText: selection.text,
-      content: '',
-      authorName: '李静',
-      createdAt: formatCommentTime(),
-      pageNumber: selection.pageNumber,
-      rect: pageRect
-        ? {
-            x: rect.left - pageRect.left,
-            y: rect.top - pageRect.top,
-            width: rect.width,
-            height: rect.height,
-          }
-        : { x: 0, y: 0, width: rect.width, height: rect.height },
-      isDraft: true,
-    };
-
-    onUserCommentsChange([...userComments, newComment]);
-    setDraftCommentId(id);
-    setActiveItemId(id);
-    clearSelection();
-    locateChecklistItem(id, 'annotation');
-  }, [selection, userComments, onUserCommentsChange, clearSelection, locateChecklistItem]);
-
-  const handleCommentContentChange = useCallback(
-    (commentId: string, content: string) => {
-      onUserCommentsChange(
-        userComments.map((comment) =>
-          comment.id === commentId
-            ? {
-                ...comment,
-                content,
-                isDraft: content.trim() ? false : comment.isDraft,
-              }
-            : comment,
-        ),
-      );
-    },
-    [userComments, onUserCommentsChange],
-  );
-
-  const handleCommentDelete = useCallback(
-    (commentId: string) => {
-      onUserCommentsChange(userComments.filter((comment) => comment.id !== commentId));
-      if (activeItemId === commentId) setActiveItemId(null);
-      if (draftCommentId === commentId) setDraftCommentId(null);
-    },
-    [userComments, onUserCommentsChange, activeItemId, draftCommentId],
+    [focusIssue, scrollToPage],
   );
 
   useEffect(() => {
@@ -346,7 +506,6 @@ export function DocPrepPreview({
     } else {
       setReviewOpen(false);
       setActiveItemId(null);
-      setDraftCommentId(null);
       setAppliedTexts({});
       setSelection(null);
     }
@@ -355,7 +514,6 @@ export function DocPrepPreview({
   useEffect(() => {
     if (reviewOpen) return;
     setActiveItemId(null);
-    setDraftCommentId(null);
     setFocusedIssueId(null);
   }, [reviewOpen]);
 
@@ -388,6 +546,66 @@ export function DocPrepPreview({
     const timer = window.setTimeout(() => setFocusedIssueId(null), 1600);
     return () => window.clearTimeout(timer);
   }, [focusedIssueId]);
+
+  useEffect(() => {
+    if (!pendingFieldLocate || !pdf) return undefined;
+
+    let cancelled = false;
+    let frame = 0;
+    let attempts = 0;
+
+    const finishFocus = (markId: string, pageHint?: number) => {
+      setFocusedIssueId(null);
+      window.requestAnimationFrame(() => {
+        if (!cancelled) setFocusedIssueId(markId);
+      });
+      focusIssue(markId, pageHint);
+    };
+
+    const retry = () => {
+      if (cancelled) return;
+      const { markId, pageHint } = pendingFieldLocate;
+      if (scrollToEditableIssue(markId, pageHint)) {
+        finishFocus(markId, pageHint);
+        setPendingFieldLocate(null);
+        return;
+      }
+      attempts += 1;
+      if (attempts < 96) {
+        frame = window.requestAnimationFrame(retry);
+        return;
+      }
+
+      void (async () => {
+        const anchor = await findTextAnchor(
+          pdf,
+          pendingFieldLocate.searchText,
+          pendingFieldLocate.pageHint,
+        );
+        if (cancelled) return;
+        if (anchor?.pageNumber) {
+          scrollToPage(anchor.pageNumber);
+          window.setTimeout(() => {
+            if (scrollToEditableIssue(pendingFieldLocate.markId, anchor.pageNumber)) {
+              finishFocus(pendingFieldLocate.markId, anchor.pageNumber);
+            } else {
+              onNotice?.('已滚动至相近原文所在页');
+            }
+            setPendingFieldLocate(null);
+          }, 120);
+          return;
+        }
+        onNotice?.('未在正文中匹配到该字段片段');
+        setPendingFieldLocate(null);
+      })();
+    };
+
+    frame = window.requestAnimationFrame(retry);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pendingFieldLocate, pdf, issueMarks, focusIssue, scrollToPage, onNotice]);
 
   useEffect(() => {
     bumpLayoutVersion();
@@ -467,8 +685,9 @@ export function DocPrepPreview({
                 open={tocOpen}
                 items={toc}
                 activePage={activePage}
+                activeTocItemId={activeTocItemId}
                 loading={loading}
-                onItemClick={scrollToPage}
+                onItemClick={handleTocItemClick}
               />
 
               <div ref={workspaceRef} className="doc-prep-preview__workspace">
@@ -482,7 +701,7 @@ export function DocPrepPreview({
                       pdf={pdf}
                       marks={issueMarks}
                       appliedTexts={appliedTexts}
-                      activeIssueId={activeItemId}
+                      activeIssueId={activeMarkId ?? activeItemId}
                       focusedIssueId={focusedIssueId}
                       onIssueClick={handleIssueMarkClick}
                       onSelectionChange={setSelection}
@@ -495,7 +714,6 @@ export function DocPrepPreview({
                     selection={selection}
                     workspaceRef={workspaceRef}
                     viewerRef={viewerRef}
-                    onAddComment={handleAddComment}
                     onAiWrite={() => {
                       onNotice?.('AI改写功能即将上线');
                     }}
@@ -506,23 +724,20 @@ export function DocPrepPreview({
                   open={reviewOpen}
                   completenessIssues={completenessIssueList}
                   smartReviewIssues={orderedSmartReviewIssues}
-                  comments={orderedComments}
+                  extractSourceFileName={extractSourceFileName}
                   activeItemId={activeItemId}
-                  draftCommentId={draftCommentId}
                   locateRequest={locateRequest}
+                  chapterLocateRequest={chapterLocateRequest}
                   loading={highlightsLoading}
                   suggestionEdit={suggestionEdit}
                   onClose={() => setReviewOpen(false)}
                   onCompletenessClick={handleCompletenessIssueClick}
                   onSmartReviewClick={handleSmartReviewIssueClick}
-                  onCommentClick={handleCommentClick}
-                  onCommentContentChange={handleCommentContentChange}
-                  onCommentDelete={handleCommentDelete}
-                  appliedIssueIds={Object.keys(appliedTexts)}
-                  onAddToConfirmList={handleAddToConfirmList}
+                  appliedIssueIds={appliedIssueIds}
                   onApplySuggestion={handleApplySuggestion}
                   onRegenerateSuggestion={handleRegenerateSuggestion}
-                  onExportConfirmList={handleExportConfirmList}
+                  onFieldLabelClick={handleFieldLabelClick}
+                  activeMarkId={activeMarkId}
                   onLayoutSettled={bumpLayoutVersion}
                 />
               </div>

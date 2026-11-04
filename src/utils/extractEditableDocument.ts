@@ -1,4 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { findNeedleInText } from './textSearchInDocument';
 
 export type EditableDocLine = {
   text: string;
@@ -189,10 +190,20 @@ export async function extractEditableDocument(pdf: PDFDocumentProxy): Promise<Ed
   return { pages };
 }
 
+export type IssueMarkCategory =
+  | 'completeness'
+  | 'smart-review'
+  | 'comment'
+  | 'field-ok'
+  | 'field-missing'
+  | 'field-issue';
+
 export type IssueMarkSpec = {
   id: string;
   searchText: string;
-  category: 'completeness' | 'smart-review' | 'comment';
+  category: IssueMarkCategory;
+  /** 优先在该页定位，避免目录/他章同名片段误匹配 */
+  pageHint?: number;
 };
 
 /**
@@ -202,13 +213,17 @@ export function buildMarkedHtml(
   plainText: string,
   marks: IssueMarkSpec[],
   applied: Record<string, string> = {},
+  pageNumber?: number,
 ): string {
   type Segment =
     | { type: 'text'; value: string }
     | { type: 'mark'; id: string; category: IssueMarkSpec['category']; value: string; applied: boolean };
 
   let segments: Segment[] = [{ type: 'text', value: plainText }];
-  const orderedMarks = [...marks].sort((a, b) => b.searchText.length - a.searchText.length);
+  const pageMarks = marks.filter(
+    (mark) => !mark.pageHint || pageNumber === undefined || mark.pageHint === pageNumber,
+  );
+  const orderedMarks = [...pageMarks].sort((a, b) => b.searchText.length - a.searchText.length);
 
   for (const mark of orderedMarks) {
     const needle = mark.searchText;
@@ -223,15 +238,16 @@ export function buildMarkedHtml(
         continue;
       }
 
-      const idx = seg.value.indexOf(needle);
-      if (idx < 0) {
+      const hit = findNeedleInText(seg.value, needle);
+      if (!hit) {
         next.push(seg);
         continue;
       }
 
       found = true;
-      const before = seg.value.slice(0, idx);
-      const after = seg.value.slice(idx + needle.length);
+      const before = seg.value.slice(0, hit.start);
+      const matched = seg.value.slice(hit.start, hit.start + hit.length);
+      const after = seg.value.slice(hit.start + hit.length);
       if (before) next.push({ type: 'text', value: before });
 
       const appliedText = applied[mark.id];
@@ -239,7 +255,7 @@ export function buildMarkedHtml(
         type: 'mark',
         id: mark.id,
         category: mark.category,
-        value: appliedText ?? needle,
+        value: appliedText ?? matched,
         applied: Boolean(appliedText),
       });
 
@@ -256,6 +272,144 @@ export function buildMarkedHtml(
       return `<mark data-issue-id="${escapeAttr(seg.id)}" class="editable-doc__mark editable-doc__mark--${seg.category}${appliedClass}" contenteditable="false">${escapeHtml(seg.value)}</mark>`;
     })
     .join('');
+}
+
+function wrapPlainLineWithMark(
+  linePlain: string,
+  hit: { start: number; length: number },
+  mark: IssueMarkSpec,
+  applied: Record<string, string>,
+): string {
+  const matched = linePlain.slice(hit.start, hit.start + hit.length);
+  const appliedText = applied[mark.id];
+  const value = appliedText ?? matched;
+  const before = escapeHtml(linePlain.slice(0, hit.start));
+  const after = escapeHtml(linePlain.slice(hit.start + hit.length));
+  const appliedClass = appliedText ? ' editable-doc__mark--applied' : '';
+  return `${before}<mark data-issue-id="${escapeAttr(mark.id)}" class="editable-doc__mark editable-doc__mark--${mark.category}${appliedClass}" contenteditable="false">${escapeHtml(value)}</mark>${after}`;
+}
+
+function collectMarkIdsFromHtml(html: string): string[] {
+  const ids: string[] = [];
+  const re = /data-issue-id="([^"]+)"/g;
+  let match = re.exec(html);
+  while (match) {
+    ids.push(match[1]);
+    match = re.exec(html);
+  }
+  return ids;
+}
+
+function applyMarksToPlainLine(
+  linePlain: string,
+  marks: IssueMarkSpec[],
+  applied: Record<string, string>,
+  pageNumber: number,
+): { html: string; placedIds: string[] } {
+  const html = buildMarkedHtml(linePlain, marks, applied, pageNumber);
+  return { html, placedIds: collectMarkIdsFromHtml(html) };
+}
+
+/**
+ * 按 PDF 行分别打 mark，避免 join('\\n') 后 split 弄断 HTML。
+ * 同一行可叠加多个 mark（投标邀请等长段落常为单行）。
+ */
+export function buildPageLinesMarkedHtml(
+  lines: string[],
+  marks: IssueMarkSpec[],
+  applied: Record<string, string> = {},
+  pageNumber: number,
+  options?: { ignorePageHint?: boolean },
+): string[] {
+  const pageMarks = marks
+    .filter(
+      (mark) =>
+        options?.ignorePageHint || !mark.pageHint || mark.pageHint === pageNumber,
+    )
+    .sort((a, b) => b.searchText.length - a.searchText.length);
+
+  const plainLines = [...lines];
+  const htmlLines: string[] = plainLines.map((line) => escapeHtml(line));
+  const placed = new Set<string>();
+
+  for (let i = 0; i < plainLines.length; i += 1) {
+    const available = pageMarks.filter(
+      (mark) => !placed.has(mark.id) && findNeedleInText(plainLines[i], mark.searchText),
+    );
+    if (!available.length) continue;
+
+    const { html, placedIds } = applyMarksToPlainLine(
+      plainLines[i],
+      available,
+      applied,
+      pageNumber,
+    );
+    placedIds.forEach((id) => placed.add(id));
+    htmlLines[i] = html;
+  }
+
+  for (const mark of pageMarks) {
+    if (placed.has(mark.id)) continue;
+
+    for (let i = 0; i < plainLines.length - 1; i += 1) {
+      const combined = `${plainLines[i]} ${plainLines[i + 1]}`;
+      const crossHit = findNeedleInText(combined, mark.searchText);
+      if (!crossHit) continue;
+
+      const firstLen = plainLines[i].length;
+      if (crossHit.start >= firstLen) continue;
+
+      const endOnFirst = Math.min(firstLen, crossHit.start + crossHit.length);
+      const hitOnFirst = { start: crossHit.start, length: endOnFirst - crossHit.start };
+      const available = pageMarks.filter(
+        (item) =>
+          !placed.has(item.id) &&
+          (item.id === mark.id || findNeedleInText(plainLines[i], item.searchText)),
+      );
+      const { html, placedIds } = applyMarksToPlainLine(
+        plainLines[i],
+        available,
+        applied,
+        pageNumber,
+      );
+      if (!placedIds.includes(mark.id)) {
+        htmlLines[i] = wrapPlainLineWithMark(plainLines[i], hitOnFirst, mark, applied);
+        placed.add(mark.id);
+      } else {
+        htmlLines[i] = html;
+        placedIds.forEach((id) => placed.add(id));
+      }
+      break;
+    }
+  }
+
+  for (const mark of pageMarks) {
+    if (placed.has(mark.id)) continue;
+    const joined = plainLines.join(' ');
+    const hit = findNeedleInText(joined, mark.searchText);
+    if (!hit) continue;
+
+    let cursor = 0;
+    for (let i = 0; i < plainLines.length; i += 1) {
+      const line = plainLines[i];
+      const lineStart = cursor;
+      const lineEnd = cursor + line.length;
+      if (hit.start >= lineStart && hit.start < lineEnd) {
+        const available = pageMarks.filter(
+          (item) =>
+            !placed.has(item.id) &&
+            (item.id === mark.id || findNeedleInText(line, item.searchText)),
+        );
+        const { html, placedIds } = applyMarksToPlainLine(line, available, applied, pageNumber);
+        placedIds.forEach((id) => placed.add(id));
+        htmlLines[i] = html;
+        break;
+      }
+      cursor = lineEnd + 1;
+    }
+  }
+
+  return htmlLines;
 }
 
 function escapeHtml(value: string) {

@@ -28,7 +28,29 @@
 }
 
 .project-info__field {
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.project-info--grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 20px;
+  align-content: start;
+}
+
+.project-info--grid .project-info__section-title {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+}
+
+.project-info__field--full {
+  grid-column: 1 / -1;
+}
+
+.project-info__field--span2 {
+  grid-column: span 2;
 }
 
 .project-info__label {

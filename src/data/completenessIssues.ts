@@ -5,10 +5,11 @@ export const completenessIssues: CompletenessIssue[] = [
     id: 'bid-deadline',
     type: 'missing',
     typeLabel: '缺失项',
-    title: '开标日期未明确',
-    reason: '招标文件中未写明具体开标日期与时间，投标人无法据此安排递交与出席。',
-    excerpt: '投标截止时间 详见第一章“投标邀请”。',
-    searchText: '投标截止时间',
+    title: '投标截止时间引用不清',
+    reason:
+      '投标人须知前附表仅写「详见第一章投标邀请」，虽投标邀请已载明 2026-02-26 09:30，但本章无法独立阅读，电子标解析与一致性校验仍易出错。',
+    excerpt: '19.1 投标截止时间 详见第一章“投标邀请”。',
+    searchText: '投标截止时间 详见第一章',
     pageHint: 14,
     bases: [
       {
@@ -77,14 +78,16 @@ export const completenessIssues: CompletenessIssue[] = [
     status: 'open',
   },
   {
-    id: 'contact-person',
+    id: 'bid-open-time-conflict',
     type: 'missing',
     typeLabel: '缺失项',
     title: '开标日期出现冲突',
-    reason: '不同文件中的开标日期表述不一致，存在理解歧义与投诉风险。',
-    excerpt: '联系人：黄州区政府采购中心电话：0713-8880358',
-    searchText: '联系人',
-    pageHint: 12,
+    reason:
+      '同一章「提交投标文件截止时间、方式、开标时间和地点」中，截止年份与投标邀请不一致，且与开标时间字段交叉引用，存在理解歧义与投诉风险。',
+    excerpt:
+      '2.截止时间：2025 年 02 月 26 日 09 时 30 分（北京时间）。4.开标时间：2026 年 02 月 26 日 09 时 30 分（北京时间）。',
+    searchText: '截止时间：2025',
+    pageHint: 11,
     bases: [
       {
         id: 'contact-law-1',
@@ -115,10 +118,11 @@ export const completenessIssues: CompletenessIssue[] = [
         ],
       },
     ],
-    suggestion: '统一开标时间为 2026年11月23日 9:00，并同步修正招标公告与投标人须知前附表。',
+    suggestion:
+      '统一截止时间与开标时间为 2026 年 02 月 26 日 09 时 30 分（与第一章投标邀请一致），并同步修正全文相关表述。',
     suggestionVariants: [
-      '以招标公告发布的开标时间为准：2026年11月23日 9:00，请删除冲突表述。',
-      '开标时间以本章前附表为准，其他章节冲突表述一律删除。',
+      '以第一章投标邀请为准：2026 年 02 月 26 日 09 时 30 分，删除 2025 年截止时间的错误表述。',
+      '在本章直接复述完整时点，避免与投标邀请、前附表出现年份不一致。',
     ],
     status: 'open',
   },
@@ -189,6 +193,80 @@ export const completenessIssues: CompletenessIssue[] = [
     bases: [],
     suggestion: '已识别，无需修改。',
     status: 'passed',
+  },
+  {
+    id: 'ch4-project-manager',
+    type: 'missing',
+    typeLabel: '缺失项',
+    title: '项目经理',
+    reason: '合同条款章节未约定项目经理姓名、注册执业资格及更换程序，影响履约责任主体认定。',
+    excerpt: '',
+    searchText: '项目经理',
+    pageHint: 32,
+    bases: [],
+    suggestion:
+      '建议补充：承包人应派驻具备相应资格的项目经理（姓名、注册证号、联系方式），未经发包人书面同意不得更换。',
+    suggestionVariants: [
+      '建议明确项目经理为一级建造师（机电工程），并约定擅自更换的违约责任。',
+      '建议在前附表或合同协议书中单列“项目经理”专条。',
+    ],
+    status: 'open',
+  },
+  {
+    id: 'ch4-quality-lifetime',
+    type: 'missing',
+    typeLabel: '缺失项',
+    title: '质量终身责任制',
+    reason: '未检索到工程质量终身责任相关表述，不符合现行工程质量管理对责任追溯的要求。',
+    excerpt: '',
+    searchText: '质量终身',
+    pageHint: 32,
+    bases: [],
+    suggestion:
+      '建议补充：建设、勘察、设计、施工、监理等单位项目负责人依法承担质量终身责任，并在合同中载明责任主体与追溯方式。',
+    status: 'open',
+  },
+  {
+    id: 'ch4-cost-control',
+    type: 'missing',
+    typeLabel: '缺失项',
+    title: '造价控制目标',
+    reason: '合同未设置造价控制目标或超限调整机制，不利于过程造价管控与变更签证管理。',
+    excerpt: '',
+    searchText: '造价控制',
+    pageHint: 32,
+    bases: [],
+    suggestion:
+      '建议补充：签约合同价为造价控制目标；因设计变更、现场签证等导致费用变化的，按专用条款约定的审批程序及计价原则调整。',
+    status: 'open',
+  },
+  {
+    id: 'ch4-migrant-account',
+    type: 'missing',
+    typeLabel: '缺失项',
+    title: '农民工工资专用账户',
+    reason: '未约定农民工工资专用账户开立、代发及监管要求，存在劳务用工合规风险。',
+    excerpt: '',
+    searchText: '农民工工资',
+    pageHint: 32,
+    bases: [],
+    suggestion:
+      '建议补充：承包人应开设农民工工资专用账户，实行总包代发，并配合发包人及主管部门监管检查。',
+    status: 'open',
+  },
+  {
+    id: 'ch4-as-built',
+    type: 'missing',
+    typeLabel: '缺失项',
+    title: '竣工图编制与配合',
+    reason: '仅原则性提及资料配合，未明确竣工图编制责任主体、套数、深度标准及提交时限。',
+    excerpt: '承包人应配合竣工资料整理',
+    searchText: '竣工图',
+    pageHint: 32,
+    bases: [],
+    suggestion:
+      '建议补充：竣工图由承包人（或设计人）负责编制，套数不少于4套，在工程竣工验收前30日提交，并配合档案验收。',
+    status: 'open',
   },
 ];
 

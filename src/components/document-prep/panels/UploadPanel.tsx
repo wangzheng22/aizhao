@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { UploadFiles } from '../../../types/documentWorkflow';
 import { SidebarTip } from '../shared/SidebarTip';
+import '../DocPrepSidebar.css';
 
 type UploadSection = {
   id: string;

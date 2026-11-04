@@ -4,6 +4,7 @@ type SidebarFooterProps = {
   showBack?: boolean;
   showNext?: boolean;
   showGenerate?: boolean;
+  showSave?: boolean;
   showRegenerateActions?: boolean;
   nextLabel?: string;
   nextDisabled?: boolean;
@@ -13,6 +14,7 @@ type SidebarFooterProps = {
   onBack?: () => void;
   onNext?: () => void;
   onGenerate?: () => void;
+  onSave?: () => void;
   onRegenerate?: () => void;
   onUpdateSupplement?: () => void;
 };
@@ -21,6 +23,7 @@ export function SidebarFooter({
   showBack = false,
   showNext = false,
   showGenerate = false,
+  showSave = false,
   showRegenerateActions = false,
   nextLabel = '下一步',
   nextDisabled = false,
@@ -30,6 +33,7 @@ export function SidebarFooter({
   onBack,
   onNext,
   onGenerate,
+  onSave,
   onRegenerate,
   onUpdateSupplement,
 }: SidebarFooterProps) {
@@ -50,6 +54,11 @@ export function SidebarFooter({
           onClick={onNext}
         >
           {nextLabel}
+        </button>
+      )}
+      {showSave && (
+        <button type="button" className="sidebar-footer__save" onClick={onSave}>
+          保存
         </button>
       )}
       {showGenerate && (

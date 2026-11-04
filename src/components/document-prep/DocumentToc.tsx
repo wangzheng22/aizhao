@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { TocItem } from '../../types/pdf';
 import './DocumentToc.css';
 
@@ -5,11 +6,27 @@ type DocumentTocProps = {
   open: boolean;
   items: TocItem[];
   activePage: number;
+  /** 联动定位时高亮的目录项 id（优先于按页码匹配） */
+  activeTocItemId?: string | null;
   loading?: boolean;
-  onItemClick: (pageNumber: number) => void;
+  onItemClick: (item: TocItem) => void;
 };
 
-export function DocumentToc({ open, items, activePage, loading = false, onItemClick }: DocumentTocProps) {
+export function DocumentToc({
+  open,
+  items,
+  activePage,
+  activeTocItemId = null,
+  loading = false,
+  onItemClick,
+}: DocumentTocProps) {
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open || !activeTocItemId || !navRef.current) return;
+    const btn = navRef.current.querySelector<HTMLElement>(`[data-toc-id="${activeTocItemId}"]`);
+    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [open, activeTocItemId]);
   return (
     <aside
       className={`document-toc ${open ? 'document-toc--open' : ''}`}
@@ -22,7 +39,7 @@ export function DocumentToc({ open, items, activePage, loading = false, onItemCl
           {loading ? '加载中…' : `${items.length} 项`}
         </span>
       </div>
-      <nav className="document-toc__nav">
+      <nav ref={navRef} className="document-toc__nav">
         {loading ? (
           <p className="document-toc__empty">正在解析文档目录…</p>
         ) : items.length === 0 ? (
@@ -33,9 +50,18 @@ export function DocumentToc({ open, items, activePage, loading = false, onItemCl
               <li key={item.id}>
                 <button
                   type="button"
-                  className={`document-toc__item ${activePage === item.pageNumber ? 'document-toc__item--active' : ''}`}
+                  data-toc-id={item.id}
+                  className={[
+                    'document-toc__item',
+                    activeTocItemId === item.id ||
+                    (!activeTocItemId && activePage === item.pageNumber)
+                      ? 'document-toc__item--active'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   style={{ paddingLeft: `${12 + item.depth * 16}px` }}
-                  onClick={() => onItemClick(item.pageNumber)}
+                  onClick={() => onItemClick(item)}
                 >
                   <span className="document-toc__item-title">{item.title}</span>
                   <span className="document-toc__item-page">{item.pageNumber}</span>

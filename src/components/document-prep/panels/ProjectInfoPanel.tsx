@@ -17,21 +17,32 @@ function RequiredLabel({ children }: { children: string }) {
   );
 }
 
+type FieldLayout = 'default' | 'full' | 'span2';
+
 function TextField({
   label,
   value,
   onChange,
   required = true,
   disabled = false,
+  layout = 'default',
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  layout?: FieldLayout;
 }) {
+  const layoutClass =
+    layout === 'full'
+      ? ' project-info__field--full'
+      : layout === 'span2'
+        ? ' project-info__field--span2'
+        : '';
+
   return (
-    <div className="project-info__field">
+    <div className={`project-info__field${layoutClass}`}>
       {required ? <RequiredLabel>{label}</RequiredLabel> : <label className="project-info__label">{label}</label>}
       <input
         type="text"
@@ -84,61 +95,65 @@ export function ProjectInfoPanel({ form, parseStatus, onChange }: ProjectInfoPan
       {isParsing ? (
         <ParsingState />
       ) : (
-        <div className="project-info">
-          <SectionTitle>项目基本信息</SectionTitle>
+        <div className="project-info project-info--grid">
+          <SectionTitle>项目信息</SectionTitle>
 
-          <TextField label="项目编号" value={form.projectCode} disabled={isDisabled} onChange={(v) => update('projectCode', v)} />
-          <TextField label="项目名称" value={form.projectName} disabled={isDisabled} onChange={(v) => update('projectName', v)} />
-
-          <div className="project-info__field">
-            <RequiredLabel>项目需求</RequiredLabel>
-            <textarea
-              className="project-info__textarea"
-              rows={4}
-              value={form.projectRequirement}
-              disabled={isDisabled}
-              onChange={(e) => update('projectRequirement', e.target.value)}
-            />
-          </div>
-
-          <TextField label="所属地区" value={form.region} disabled={isDisabled} onChange={(v) => update('region', v)} />
-
-          <div className="project-info__field">
-            <RequiredLabel>是否进场</RequiredLabel>
-            <div className="project-info__radios">
-              <label className="project-info__radio">
-                <input
-                  type="radio"
-                  name="isEntry"
-                  checked={form.isEntry === 'yes'}
-                  disabled={isDisabled}
-                  onChange={() => update('isEntry', 'yes')}
-                />
-                是
-              </label>
-              <label className="project-info__radio">
-                <input
-                  type="radio"
-                  name="isEntry"
-                  checked={form.isEntry === 'no'}
-                  disabled={isDisabled}
-                  onChange={() => update('isEntry', 'no')}
-                />
-                否
-              </label>
-            </div>
-          </div>
-
-          <TextField label="项目类型" value={form.projectType} disabled={isDisabled} onChange={(v) => update('projectType', v)} />
-          <TextField label="招标方式" value={form.biddingMethod} disabled={isDisabled} onChange={(v) => update('biddingMethod', v)} />
-          <TextField label="开标时间" value={form.bidOpenTime} disabled={isDisabled} onChange={(v) => update('bidOpenTime', v)} />
-
-          <SectionTitle>招标人信息</SectionTitle>
-
-          <TextField label="招标人" value={form.bidder} disabled={isDisabled} onChange={(v) => update('bidder', v)} />
-          <TextField label="招标单位" value={form.biddingUnit} disabled={isDisabled} onChange={(v) => update('biddingUnit', v)} />
-          <TextField label="联系方式" value={form.contact} disabled={isDisabled} onChange={(v) => update('contact', v)} />
-          <TextField label="单位地址" value={form.address} disabled={isDisabled} onChange={(v) => update('address', v)} />
+          <TextField
+            label="项目名称"
+            value={form.projectName}
+            disabled={isDisabled}
+            onChange={(v) => update('projectName', v)}
+            layout="full"
+          />
+          <TextField
+            label="行业类型"
+            value={form.industryType}
+            disabled={isDisabled}
+            onChange={(v) => update('industryType', v)}
+          />
+          <TextField
+            label="专业类型"
+            value={form.professionalType}
+            disabled={isDisabled}
+            onChange={(v) => update('professionalType', v)}
+          />
+          <TextField
+            label="资金来源及比例"
+            value={form.fundSourceAndRatio}
+            disabled={isDisabled}
+            onChange={(v) => update('fundSourceAndRatio', v)}
+          />
+          <TextField
+            label="招标方式"
+            value={form.biddingMethod}
+            disabled={isDisabled}
+            onChange={(v) => update('biddingMethod', v)}
+          />
+          <TextField
+            label="建设地点"
+            value={form.constructionLocation}
+            disabled={isDisabled}
+            onChange={(v) => update('constructionLocation', v)}
+          />
+          <TextField
+            label="招标控制价"
+            value={form.tenderControlPrice}
+            disabled={isDisabled}
+            onChange={(v) => update('tenderControlPrice', v)}
+          />
+          <TextField
+            label="评标方法"
+            value={form.bidEvaluationMethod}
+            disabled={isDisabled}
+            onChange={(v) => update('bidEvaluationMethod', v)}
+            layout="span2"
+          />
+          <TextField
+            label="资格审查方式"
+            value={form.qualificationReviewMethod}
+            disabled={isDisabled}
+            onChange={(v) => update('qualificationReviewMethod', v)}
+          />
         </div>
       )}
     </>

@@ -1,35 +1,42 @@
-export type WizardStep = '文件上传' | '项目信息' | '范本选择';
+export type ReviewWizardStep = '项目信息' | '范本选择';
+
+/** @deprecated Use ReviewWizardStep */
+export type WizardStep = ReviewWizardStep;
 
 export type ParseStatus = 'idle' | 'parsing' | 'done';
 
+/** 项目信息页展示字段（与产品字段表「是否展示=是」一致） */
 export type ProjectForm = {
-  projectCode: string;
   projectName: string;
-  projectRequirement: string;
-  region: string;
-  isEntry: 'yes' | 'no';
-  projectType: string;
+  industryType: string;
+  professionalType: string;
+  fundSourceAndRatio: string;
   biddingMethod: string;
-  bidOpenTime: string;
-  bidder: string;
-  biddingUnit: string;
-  contact: string;
-  address: string;
+  constructionLocation: string;
+  tenderControlPrice: string;
+  bidEvaluationMethod: string;
+  qualificationReviewMethod: string;
 };
 
 export type UploadFiles = Record<string, string[]>;
 
+export type DocumentPreparationEntry = {
+  projectForm: ProjectForm;
+  uploadFiles: UploadFiles;
+  selectedTemplateId?: string;
+  autoGenerate?: boolean;
+  /** 进入编制页时直接展示已生成的招标文件（跳过生成动效） */
+  openWithDocumentReady?: boolean;
+};
+
 export const emptyProjectForm: ProjectForm = {
-  projectCode: '',
   projectName: '',
-  projectRequirement: '',
-  region: '',
-  isEntry: 'yes',
-  projectType: '',
+  industryType: '',
+  professionalType: '',
+  fundSourceAndRatio: '',
   biddingMethod: '',
-  bidOpenTime: '',
-  bidder: '',
-  biddingUnit: '',
-  contact: '',
-  address: '',
+  constructionLocation: '',
+  tenderControlPrice: '',
+  bidEvaluationMethod: '',
+  qualificationReviewMethod: '',
 };

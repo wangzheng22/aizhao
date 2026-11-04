@@ -12,10 +12,19 @@
   padding: 0 20px;
 }
 
-.doc-prep-header__title {
+.doc-prep-header__leading {
   flex: 0 1 auto;
-  max-width: 280px;
   min-width: 0;
+  max-width: min(480px, 42vw);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-prep-header__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
   font-size: 16px;
   font-weight: 400;
   line-height: 26px;
@@ -82,8 +91,13 @@
   transition: background 0.2s;
 }
 
-.doc-prep-header__btn:hover {
+.doc-prep-header__btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.doc-prep-header__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .doc-prep-header__btn--active {

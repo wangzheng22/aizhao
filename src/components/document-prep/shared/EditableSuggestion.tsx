@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './EditableSuggestion.css';
 
 type EditableSuggestionProps = {
@@ -10,10 +10,22 @@ type EditableSuggestionProps = {
 export function EditableSuggestion({ value, originalValue, onSave }: EditableSuggestionProps) {
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const syncHeight = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
 
   useEffect(() => {
     setDraft(value);
   }, [value]);
+
+  useEffect(() => {
+    syncHeight();
+  }, [draft]);
 
   const handleBlur = () => {
     setFocused(false);
@@ -37,11 +49,15 @@ export function EditableSuggestion({ value, originalValue, onSave }: EditableSug
     >
       <div className="editable-suggestion-grow">
         <textarea
+          ref={textareaRef}
           className="editable-suggestion"
           value={draft}
           rows={1}
           aria-label="修改建议"
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            syncHeight();
+          }}
           onFocus={() => setFocused(true)}
           onBlur={handleBlur}
           onClick={stopPropagation}

@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { FieldAnchorRect } from '../types/completeness';
+import { findNeedleInText } from './textSearchInDocument';
 
 type PdfTextItem = {
   str: string;
@@ -65,9 +66,10 @@ export async function findTextAnchor(
   searchText: string,
   pageHint?: number,
 ): Promise<{ pageNumber: number; rect: FieldAnchorRect } | null> {
+  const allPages = Array.from({ length: pdf.numPages }, (_, index) => index + 1);
   const pages = pageHint
-    ? [pageHint]
-    : Array.from({ length: pdf.numPages }, (_, index) => index + 1);
+    ? [pageHint, ...allPages.filter((pageNumber) => pageNumber !== pageHint)]
+    : allPages;
 
   for (const pageNumber of pages) {
     const page = await pdf.getPage(pageNumber);
@@ -81,12 +83,12 @@ export async function findTextAnchor(
     }
 
     const fullText = items.map((item) => item.str).join('');
-    const startIdx = fullText.indexOf(searchText);
-
-    if (startIdx < 0) continue;
+    const hit = findNeedleInText(fullText, searchText);
+    if (!hit) continue;
+    const startIdx = hit.start;
 
     const viewport = page.getViewport({ scale: 1 });
-    const rect = getMatchRects(items, startIdx, startIdx + searchText.length, viewport.height);
+    const rect = getMatchRects(items, startIdx, startIdx + hit.length, viewport.height);
 
     if (rect) {
       return { pageNumber, rect };

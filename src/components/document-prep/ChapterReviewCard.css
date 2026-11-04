@@ -1,0 +1,199 @@
+.chapter-review-card {
+  flex-shrink: 0;
+  height: auto;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.chapter-review-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafbfd;
+}
+
+.chapter-review-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+  color: #333;
+}
+
+.chapter-review-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.chapter-review-card__stat {
+  font-size: 12px;
+  line-height: 18px;
+  padding: 1px 8px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.chapter-review-card__stat--missing {
+  color: #d4380d;
+  background: #fff2e8;
+}
+
+.chapter-review-card__stat--issue {
+  color: #531dab;
+  background: #f9f0ff;
+}
+
+.chapter-review-card__stat--ok {
+  color: #389e0d;
+  background: #f6ffed;
+}
+
+.chapter-review-card__fields {
+  padding: 8px 12px 12px;
+}
+
+.chapter-review-card__col-head {
+  display: none;
+}
+
+.chapter-review-card__field-block + .chapter-review-card__field-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #f0f0f0;
+}
+
+.chapter-review-card__field-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chapter-review-card__field-row {
+  margin-bottom: 0;
+}
+
+.chapter-review-card__field-row--missing,
+.chapter-review-card__field-row--issue {
+  padding: 10px;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.chapter-review-card__field-row:not(.chapter-review-card__field-row--missing):not(
+    .chapter-review-card__field-row--issue
+  ) {
+  padding: 6px 0;
+}
+
+.chapter-review-card__field-row--missing {
+  background: #fff7f0;
+}
+
+.chapter-review-card__field-row--missing .chapter-review-card__field-value {
+  color: #ad4e00;
+}
+
+.chapter-review-card__field-row--issue {
+  background: #faf5ff;
+}
+
+.chapter-review-card__field-label {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #434343;
+  cursor: pointer;
+  border-radius: 2px;
+  text-decoration: underline;
+  text-decoration-color: rgba(54, 113, 255, 0.35);
+  text-underline-offset: 2px;
+}
+
+.chapter-review-card__field-label:hover {
+  color: #3671ff;
+  text-decoration-color: rgba(54, 113, 255, 0.75);
+}
+
+.chapter-review-card__field-label--active {
+  color: #3671ff;
+  text-decoration-color: #3671ff;
+}
+
+.chapter-review-card__field-label:disabled {
+  cursor: default;
+  color: #bfbfbf;
+  text-decoration: none;
+}
+
+.chapter-review-card__field-value {
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  line-height: 22px;
+  color: #333;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.chapter-review-card__field-bases {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.chapter-review-card__field-ok,
+.chapter-review-card__field-tag {
+  font-size: 12px;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.chapter-review-card__field-ok {
+  color: #389e0d;
+  background: #f6ffed;
+}
+
+.chapter-review-card__field-tag--missing {
+  color: #d4380d;
+  background: #fff2e8;
+}
+
+.chapter-review-card__field-tag--issue {
+  color: #531dab;
+  background: #f9f0ff;
+}
+
+.chapter-review-card .review-issue-card {
+  margin-top: 10px;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.chapter-review-card .review-issue-card__header {
+  padding-top: 0;
+}
+
+.chapter-review-card .review-issue-card__title {
+  font-size: 13px;
+}

@@ -10,7 +10,6 @@ type TextSelectionOverlayProps = {
   selection: SelectionLike;
   workspaceRef: React.RefObject<HTMLElement | null>;
   viewerRef: React.RefObject<HTMLElement | null>;
-  onAddComment: () => void;
   onAiWrite: () => void;
 };
 
@@ -135,7 +134,6 @@ export function TextSelectionOverlay({
   selection,
   workspaceRef,
   viewerRef,
-  onAddComment,
   onAiWrite,
 }: TextSelectionOverlayProps) {
   const [position, setPosition] = useState<ToolbarPosition | null>(null);
@@ -187,12 +185,7 @@ export function TextSelectionOverlay({
           aria-hidden="true"
         />
       ))}
-      <TextSelectionToolbar
-        anchor={position}
-        workspaceRef={workspaceRef}
-        onAddComment={onAddComment}
-        onAiWrite={onAiWrite}
-      />
+      <TextSelectionToolbar anchor={position} workspaceRef={workspaceRef} onAiWrite={onAiWrite} />
     </>
   );
 }

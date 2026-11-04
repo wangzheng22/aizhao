@@ -8,14 +8,10 @@ type SmartReviewCardProps = {
   interactive?: boolean;
   suggestionEdit?: SuggestionEditHandlers;
   onClick?: () => void;
-  onAddToConfirmList?: (issueId: string) => void;
   onApplySuggestion?: (issueId: string, suggestion: string) => void;
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
-  inConfirmList?: boolean;
   applied?: boolean;
-  showConfirmCheckbox?: boolean;
-  confirmChecked?: boolean;
-  onConfirmCheckedChange?: (checked: boolean) => void;
+  showHeader?: boolean;
 };
 
 export function SmartReviewCard({
@@ -24,14 +20,10 @@ export function SmartReviewCard({
   interactive = true,
   suggestionEdit,
   onClick,
-  onAddToConfirmList,
   onApplySuggestion,
   onRegenerateSuggestion,
-  inConfirmList,
   applied,
-  showConfirmCheckbox,
-  confirmChecked,
-  onConfirmCheckedChange,
+  showHeader = true,
 }: SmartReviewCardProps) {
   return (
     <ReviewIssueCard
@@ -50,14 +42,10 @@ export function SmartReviewCard({
       interactive={interactive}
       suggestionEdit={suggestionEdit}
       onClick={onClick}
-      onAddToConfirmList={onAddToConfirmList}
       onApplySuggestion={onApplySuggestion}
       onRegenerateSuggestion={onRegenerateSuggestion}
-      inConfirmList={inConfirmList}
       applied={applied}
-      showConfirmCheckbox={showConfirmCheckbox}
-      confirmChecked={confirmChecked}
-      onConfirmCheckedChange={onConfirmCheckedChange}
+      showHeader={showHeader}
     />
   );
 }

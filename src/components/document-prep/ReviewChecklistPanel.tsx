@@ -1,112 +1,151 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Comment } from '../../types/comment';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ResolvedCompletenessIssue } from '../../types/completeness';
 import type { ResolvedSmartReviewIssue } from '../../types/smartReview';
+import type { ChapterFieldView } from '../../types/chapterReview';
 import type { SuggestionEditHandlers } from '../../types/suggestionEdit';
-import { commentToAnchor } from '../../utils/commentAnchors';
+import { buildChapterReviewCards } from '../../utils/buildChapterReviewCards';
 import { sortIssuesByDocumentOrder } from '../../utils/issueDocumentOrder';
-import { CompletenessCard } from './CompletenessCard';
-import { CommentCard } from './CommentCard';
-import { SmartReviewCard } from './SmartReviewCard';
+import { ChapterReviewCard } from './ChapterReviewCard';
+import './ChapterReviewCard.css';
 import './ReviewChecklistPanel.css';
 
-export type ReviewFilter = 'all' | 'missing' | 'issue' | 'annotation' | 'confirm';
+export type ReviewFilter = 'all' | 'missing' | 'issue' | 'ok';
 
 export type ReviewLocateRequest = {
   id: string;
-  filter: Exclude<ReviewFilter, 'confirm'>;
+  filter: ReviewFilter;
   token: number;
   /** Panel was closed and is expanding — wait for width transition before scrolling */
   expanding?: boolean;
+};
+
+export type ChapterLocateRequest = {
+  chapterId: string;
+  token: number;
+  expanding?: boolean;
+  /** 同步滚动到章节内某一字段块 */
+  fieldId?: string;
 };
 
 type ReviewChecklistPanelProps = {
   open: boolean;
   completenessIssues: ResolvedCompletenessIssue[];
   smartReviewIssues: ResolvedSmartReviewIssue[];
-  comments: Comment[];
+  extractSourceFileName?: string;
   activeItemId: string | null;
-  draftCommentId: string | null;
   locateRequest?: ReviewLocateRequest | null;
+  chapterLocateRequest?: ChapterLocateRequest | null;
   loading?: boolean;
   suggestionEdit?: SuggestionEditHandlers;
   onClose: () => void;
   onCompletenessClick: (issue: ResolvedCompletenessIssue) => void;
   onSmartReviewClick: (issue: ResolvedSmartReviewIssue) => void;
-  onCommentClick: (comment: Comment) => void;
-  onCommentContentChange: (commentId: string, content: string) => void;
-  onCommentDelete: (commentId: string) => void;
   appliedIssueIds?: string[];
-  onAddToConfirmList?: (issueId: string) => void;
   onApplySuggestion?: (issueId: string, suggestion: string) => void;
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
-  onExportConfirmList?: (items: { id: string; title: string; tagLabel: string; reason: string }[]) => void;
+  onFieldLabelClick?: (chapterId: string, field: ChapterFieldView) => void;
+  activeMarkId?: string | null;
   onLayoutSettled?: () => void;
 };
 
-type ReviewEntry =
-  | { kind: 'missing'; id: string; issue: ResolvedCompletenessIssue }
-  | { kind: 'issue'; id: string; issue: ResolvedSmartReviewIssue };
-
-type ChecklistEntry = ReviewEntry | { kind: 'annotation'; id: string; comment: Comment };
+type ChapterListFilter = ReviewFilter;
 
 export function ReviewChecklistPanel({
   open,
   completenessIssues,
   smartReviewIssues,
-  comments,
+  extractSourceFileName = '招标文件.pdf',
   activeItemId,
-  draftCommentId,
   locateRequest = null,
+  chapterLocateRequest = null,
   loading = false,
   suggestionEdit,
   onClose,
   onCompletenessClick,
   onSmartReviewClick,
-  onCommentClick,
-  onCommentContentChange,
-  onCommentDelete,
   appliedIssueIds = [],
-  onAddToConfirmList,
   onApplySuggestion,
   onRegenerateSuggestion,
-  onExportConfirmList,
+  onFieldLabelClick,
+  activeMarkId = null,
   onLayoutSettled,
 }: ReviewChecklistPanelProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<ReviewFilter>('all');
-  const [confirmIds, setConfirmIds] = useState<string[]>([]);
-  const [selectedConfirmIds, setSelectedConfirmIds] = useState<string[]>([]);
-  const [bumpAnimKey, setBumpAnimKey] = useState(0);
   const [decrementAnim, setDecrementAnim] = useState<{
     key: number;
-    targets: Array<'all' | 'missing' | 'issue'>;
+    targets: Array<'all' | 'missing' | 'issue' | 'ok'>;
   } | null>(null);
   const prevAppliedRef = useRef<string[]>(appliedIssueIds);
-
-  useEffect(() => {
-    if (draftCommentId) {
-      setFilter('annotation');
-    }
-  }, [draftCommentId]);
+  const appliedSetForScrollRef = useRef(new Set(appliedIssueIds));
+  const listScrollBeforeApplyRef = useRef(0);
 
   useEffect(() => {
     if (!locateRequest) return;
     setFilter(locateRequest.filter);
   }, [locateRequest]);
 
+  /** 采纳后列表高度变化时保持滚动位置，避免清单跳动 */
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+
+    const prevApplied = appliedSetForScrollRef.current;
+    const hasNewApply = appliedIssueIds.some((id) => !prevApplied.has(id));
+    if (hasNewApply) {
+      body.scrollTop = listScrollBeforeApplyRef.current;
+    } else {
+      listScrollBeforeApplyRef.current = body.scrollTop;
+    }
+    appliedSetForScrollRef.current = new Set(appliedIssueIds);
+  }, [appliedIssueIds, filter]);
+
+  /** 仅正文/定位联动时滚动清单，不因采纳或 loading 重算而滚动 */
   useEffect(() => {
-    if (!open || !activeItemId || !bodyRef.current) return undefined;
+    if (!open || !locateRequest || !bodyRef.current) return undefined;
 
     const scrollToCard = () => {
-      const card = bodyRef.current?.querySelector<HTMLElement>(`[data-card-id="${activeItemId}"]`);
-      card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const card = bodyRef.current?.querySelector<HTMLElement>(
+        `[data-card-id="${locateRequest.id}"]`,
+      );
+      card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const delay = locateRequest?.expanding ? 280 : locateRequest ? 80 : 0;
+    const delay = locateRequest.expanding ? 280 : 80;
     const timer = window.setTimeout(scrollToCard, delay);
     return () => window.clearTimeout(timer);
-  }, [open, activeItemId, filter, locateRequest, loading]);
+  }, [open, locateRequest?.token, locateRequest?.id, locateRequest?.expanding]);
+
+  useEffect(() => {
+    if (!chapterLocateRequest) return;
+    setFilter('all');
+  }, [chapterLocateRequest]);
+
+  useEffect(() => {
+    if (!open || !chapterLocateRequest || !bodyRef.current) return undefined;
+
+    const scrollToChapter = () => {
+      const root = bodyRef.current;
+      if (!root) return;
+      if (chapterLocateRequest.fieldId) {
+        const fieldEl = root.querySelector<HTMLElement>(
+          `[data-field-id="${chapterLocateRequest.fieldId}"]`,
+        );
+        if (fieldEl) {
+          fieldEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          return;
+        }
+      }
+      const card = root.querySelector<HTMLElement>(
+        `[data-chapter-id="${chapterLocateRequest.chapterId}"]`,
+      );
+      card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const delay = chapterLocateRequest.expanding ? 300 : loading ? 120 : 40;
+    const timer = window.setTimeout(scrollToChapter, delay);
+    return () => window.clearTimeout(timer);
+  }, [open, chapterLocateRequest?.token, chapterLocateRequest?.chapterId, chapterLocateRequest?.fieldId, chapterLocateRequest?.expanding, loading]);
 
   const missingIssues = useMemo(
     () => sortIssuesByDocumentOrder(completenessIssues.filter((issue) => issue.status === 'open')),
@@ -118,61 +157,15 @@ export function ReviewChecklistPanel({
     [smartReviewIssues],
   );
 
-  const orderedComments = useMemo(
+  const chapterCards = useMemo(
     () =>
-      sortIssuesByDocumentOrder(
-        comments.map((comment) => ({
-          ...comment,
-          anchor: commentToAnchor(comment),
-        })),
+      buildChapterReviewCards(
+        completenessIssues,
+        smartReviewIssues,
+        appliedIssueIds,
+        extractSourceFileName,
       ),
-    [comments],
-  );
-
-  const allReviewEntries = useMemo(() => {
-    const reviewEntries: ReviewEntry[] = [
-      ...missingIssues.map((issue): ReviewEntry => ({ kind: 'missing', id: issue.id, issue })),
-      ...problemIssues.map((issue): ReviewEntry => ({ kind: 'issue', id: issue.id, issue })),
-    ];
-
-    return sortIssuesByDocumentOrder(
-      reviewEntries.map((entry) => ({
-        ...entry,
-        anchor: entry.issue.anchor,
-      })),
-    );
-  }, [missingIssues, problemIssues]);
-
-  const confirmEntries = useMemo(() => {
-    const idSet = new Set(confirmIds);
-    return allReviewEntries.filter((entry) => idSet.has(entry.id));
-  }, [allReviewEntries, confirmIds]);
-
-  useEffect(() => {
-    if (confirmIds.length === 0 && filter === 'confirm') {
-      setFilter('all');
-    }
-  }, [confirmIds.length, filter]);
-
-  useEffect(() => {
-    setSelectedConfirmIds((prev) => {
-      const confirmSet = new Set(confirmIds);
-      const kept = prev.filter((id) => confirmSet.has(id));
-      const newlyAdded = confirmIds.filter((id) => !prev.includes(id));
-      return [...kept, ...newlyAdded];
-    });
-  }, [confirmIds]);
-
-  const appliedIdSet = useMemo(() => new Set(appliedIssueIds), [appliedIssueIds]);
-
-  const openMissingIssues = useMemo(
-    () => missingIssues.filter((issue) => !appliedIdSet.has(issue.id)),
-    [missingIssues, appliedIdSet],
-  );
-
-  const openProblemIssues = useMemo(
-    () => problemIssues.filter((issue) => !appliedIdSet.has(issue.id)),
-    [problemIssues, appliedIdSet],
+    [completenessIssues, smartReviewIssues, appliedIssueIds, extractSourceFileName],
   );
 
   useEffect(() => {
@@ -181,7 +174,7 @@ export function ReviewChecklistPanel({
     prevAppliedRef.current = appliedIssueIds;
     if (!newlyApplied.length) return;
 
-    const targets = new Set<'all' | 'missing' | 'issue'>(['all']);
+    const targets = new Set<'all' | 'missing' | 'issue' | 'ok'>(['all']);
     newlyApplied.forEach((id) => {
       if (missingIssues.some((issue) => issue.id === id)) targets.add('missing');
       if (problemIssues.some((issue) => issue.id === id)) targets.add('issue');
@@ -190,142 +183,50 @@ export function ReviewChecklistPanel({
     setDecrementAnim({ key: Date.now(), targets: [...targets] });
   }, [appliedIssueIds, missingIssues, problemIssues]);
 
-  const counts = {
-    all: openMissingIssues.length + openProblemIssues.length,
-    missing: openMissingIssues.length,
-    issue: openProblemIssues.length,
-    annotation: orderedComments.length,
-    confirm: confirmIds.length,
-  };
-
-  const entries = useMemo((): ChecklistEntry[] => {
-    if (filter === 'annotation') {
-      return orderedComments.map((comment) => ({ kind: 'annotation', id: comment.id, comment }));
-    }
-
-    if (filter === 'confirm') {
-      return confirmEntries;
-    }
-
-    if (filter === 'missing') {
-      return missingIssues.map((issue) => ({ kind: 'missing', id: issue.id, issue }));
-    }
-
-    if (filter === 'issue') {
-      return problemIssues.map((issue) => ({ kind: 'issue', id: issue.id, issue }));
-    }
-
-    return allReviewEntries;
-  }, [filter, orderedComments, confirmEntries, missingIssues, problemIssues, allReviewEntries]);
-
-  const allConfirmSelected =
-    confirmIds.length > 0 && confirmIds.every((id) => selectedConfirmIds.includes(id));
-
-  const handleAddToConfirm = (issueId: string) => {
-    if (confirmIds.includes(issueId)) return;
-    setConfirmIds((prev) => [...prev, issueId]);
-    setBumpAnimKey((key) => key + 1);
-    onAddToConfirmList?.(issueId);
-  };
-
-  const handleToggleSelectAll = () => {
-    if (allConfirmSelected) {
-      setSelectedConfirmIds([]);
-    } else {
-      setSelectedConfirmIds([...confirmIds]);
-    }
-  };
-
-  const handleToggleCardSelect = (issueId: string, checked: boolean) => {
-    setSelectedConfirmIds((prev) => {
-      if (checked) {
-        return prev.includes(issueId) ? prev : [...prev, issueId];
-      }
-      return prev.filter((id) => id !== issueId);
-    });
-  };
-
-  const handleExport = () => {
-    const selected = confirmEntries.filter((entry) => selectedConfirmIds.includes(entry.id));
-    if (!selected.length) {
-      onExportConfirmList?.([]);
-      return;
-    }
-
-    const items = selected.map((entry) => ({
-      id: entry.id,
-      title: entry.issue.title,
-      tagLabel: entry.kind === 'missing' ? '缺失项' : '问题项',
-      reason: entry.issue.reason,
-    }));
-
-    const lines = [
-      '待确认清单',
-      `导出时间：${new Date().toLocaleString('zh-CN')}`,
-      `共 ${items.length} 项`,
-      '',
-      ...items.map(
-        (item, index) =>
-          `${index + 1}. 【${item.tagLabel}】${item.title}\n   原因：${item.reason}`,
-      ),
-    ];
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `待确认清单_${Date.now()}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    onExportConfirmList?.(items);
-  };
-
-  const reviewFilters: { key: Exclude<ReviewFilter, 'annotation' | 'confirm'>; label: string }[] = [
-    { key: 'all', label: '全部' },
-    { key: 'missing', label: '缺失项' },
-    { key: 'issue', label: '问题项' },
-  ];
-
-  const renderReviewCard = (entry: ReviewEntry) => {
-    const common = {
-      active: activeItemId === entry.id,
-      suggestionEdit,
-      onAddToConfirmList: handleAddToConfirm,
-      onApplySuggestion,
-      onRegenerateSuggestion,
-      inConfirmList: confirmIds.includes(entry.id),
-      applied: appliedIdSet.has(entry.id),
-      showConfirmCheckbox: filter === 'confirm',
-      confirmChecked: selectedConfirmIds.includes(entry.id),
-      onConfirmCheckedChange: (checked: boolean) => handleToggleCardSelect(entry.id, checked),
-    };
-
-    if (entry.kind === 'missing') {
-      return (
-        <CompletenessCard
-          key={`${filter}-${entry.id}`}
-          issue={{ ...entry.issue, typeLabel: '缺失项' }}
-          onClick={() => onCompletenessClick(entry.issue)}
-          {...common}
-        />
-      );
-    }
-
-    return (
-      <SmartReviewCard
-        key={`${filter}-${entry.id}`}
-        issue={{ ...entry.issue, typeLabel: '问题项' }}
-        onClick={() => onSmartReviewClick(entry.issue)}
-        {...common}
-      />
+  const counts = useMemo(() => {
+    return chapterCards.reduce(
+      (acc, chapter) => ({
+        all: acc.all + chapter.fields.length,
+        missing: acc.missing + chapter.missingCount,
+        issue: acc.issue + chapter.issueCount,
+        ok: acc.ok + chapter.okCount,
+      }),
+      { all: 0, missing: 0, issue: 0, ok: 0 },
     );
-  };
+  }, [chapterCards]);
+
+  const chapterFilter: ChapterListFilter = filter;
+
+  const visibleChapters = useMemo(() => {
+    return chapterCards.filter((chapter) => {
+      if (chapterFilter === 'all') return chapter.fields.length > 0;
+      if (chapterFilter === 'missing') return chapter.missingCount > 0;
+      if (chapterFilter === 'issue') return chapter.issueCount > 0;
+      return chapter.okCount > 0;
+    });
+  }, [chapterCards, chapterFilter]);
+
+  const completenessById = useMemo(
+    () => new Map(completenessIssues.map((issue) => [issue.id, issue])),
+    [completenessIssues],
+  );
+
+  const smartById = useMemo(
+    () => new Map(smartReviewIssues.map((issue) => [issue.id, issue])),
+    [smartReviewIssues],
+  );
+
+  const reviewFilters: { key: ChapterListFilter; label: string }[] = [
+    { key: 'all', label: '全部' },
+    { key: 'missing', label: '未完成项' },
+    { key: 'issue', label: '问题项' },
+    { key: 'ok', label: '正常项' },
+  ];
 
   return (
     <aside
       className={`review-checklist ${open ? 'review-checklist--open' : ''}`}
-      aria-label="智能审查清单"
+      aria-label="文件编审清单"
       aria-hidden={!open}
       onTransitionEnd={(event) => {
         if (event.propertyName === 'width') {
@@ -334,22 +235,25 @@ export function ReviewChecklistPanel({
       }}
     >
       <div className="review-checklist__header">
-        <h2 className="review-checklist__title">智能审查清单</h2>
-        <button type="button" className="review-checklist__close" aria-label="关闭审查清单" onClick={onClose}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
+        <h2 className="review-checklist__title">文件编审清单</h2>
+        <div className="review-checklist__header-actions">
+          <button type="button" className="review-checklist__close" aria-label="关闭编审清单" onClick={onClose}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="review-checklist__filters" role="tablist" aria-label="审查分类">
-        <div className="review-checklist__segment" role="presentation">
+        <div className="review-checklist__segment review-checklist__segment--full" role="presentation">
           {reviewFilters.map((item) => (
             <button
               key={item.key}
               type="button"
               role="tab"
               aria-selected={filter === item.key}
+              data-filter={item.key}
               className={[
                 'review-checklist__segment-item',
                 filter === item.key ? 'review-checklist__segment-item--active' : '',
@@ -374,90 +278,36 @@ export function ReviewChecklistPanel({
             </button>
           ))}
         </div>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={filter === 'annotation'}
-          className={[
-            'review-checklist__side-tab',
-            filter === 'annotation' ? 'review-checklist__side-tab--active' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => setFilter('annotation')}
-        >
-          <span>批注项</span>
-          <em>{counts.annotation}</em>
-        </button>
-
-        {counts.confirm > 0 && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filter === 'confirm'}
-            className={[
-              'review-checklist__side-tab',
-              'review-checklist__side-tab--confirm',
-              filter === 'confirm' ? 'review-checklist__side-tab--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => setFilter('confirm')}
-          >
-            <span>待确认</span>
-            <em className="review-checklist__confirm-count">
-              {counts.confirm}
-              {bumpAnimKey > 0 && (
-                <i key={bumpAnimKey} className="review-checklist__count-bump" aria-hidden="true">
-                  +1
-                </i>
-              )}
-            </em>
-          </button>
-        )}
       </div>
-
-      {filter === 'confirm' && (
-        <div className="review-checklist__confirm-bar">
-          <label className="review-checklist__select-all">
-            <input type="checkbox" checked={allConfirmSelected} onChange={handleToggleSelectAll} />
-            <span>全选</span>
-          </label>
-          <button
-            type="button"
-            className="review-checklist__export-btn"
-            disabled={selectedConfirmIds.length === 0}
-            onClick={handleExport}
-          >
-            导出待确认清单
-          </button>
-        </div>
-      )}
 
       <div ref={bodyRef} className="review-checklist__body">
         {loading && <p className="review-checklist__empty">正在定位文档问题…</p>}
-        {!loading && entries.length === 0 && (
+        {!loading && visibleChapters.length === 0 && (
           <p className="review-checklist__empty">暂无相关审查项</p>
         )}
         {!loading &&
-          entries.map((entry) => {
-            if (entry.kind === 'annotation') {
-              return (
-                <CommentCard
-                  key={entry.id}
-                  comment={entry.comment}
-                  active={activeItemId === entry.id}
-                  autoFocus={draftCommentId === entry.id}
-                  onClick={() => onCommentClick(entry.comment)}
-                  onContentChange={(content) => onCommentContentChange(entry.id, content)}
-                  onDelete={() => onCommentDelete(entry.id)}
-                />
-              );
-            }
-
-            return renderReviewCard(entry);
-          })}
+          visibleChapters.map((chapter) => (
+            <ChapterReviewCard
+              key={chapter.id}
+              chapter={chapter}
+              filter={chapterFilter}
+              activeItemId={activeItemId}
+              appliedIssueIds={appliedIssueIds}
+              suggestionEdit={suggestionEdit}
+              onCompletenessClick={(issueId) => {
+                const issue = completenessById.get(issueId);
+                if (issue) onCompletenessClick(issue);
+              }}
+              onSmartReviewClick={(issueId) => {
+                const issue = smartById.get(issueId);
+                if (issue) onSmartReviewClick(issue);
+              }}
+              onApplySuggestion={onApplySuggestion}
+              onRegenerateSuggestion={onRegenerateSuggestion}
+              onFieldLabelClick={onFieldLabelClick}
+              activeMarkId={activeMarkId}
+            />
+          ))}
       </div>
     </aside>
   );
