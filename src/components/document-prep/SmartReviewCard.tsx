@@ -13,7 +13,6 @@ type SmartReviewCardProps = {
   applied?: boolean;
   showHeader?: boolean;
   listVariant?: 'default' | 'issue' | 'pending';
-  fieldName?: string;
 };
 
 export function SmartReviewCard({
@@ -27,7 +26,6 @@ export function SmartReviewCard({
   applied,
   showHeader = true,
   listVariant = 'default',
-  fieldName,
 }: SmartReviewCardProps) {
   return (
     <ReviewIssueCard
@@ -51,7 +49,6 @@ export function SmartReviewCard({
       applied={applied}
       showHeader={showHeader}
       listVariant={listVariant}
-      fieldName={fieldName}
     />
   );
 }

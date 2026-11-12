@@ -31,7 +31,6 @@ type ReviewIssueCardProps = {
   showHeader?: boolean;
   /** 编审清单章节内嵌卡片展示形态 */
   listVariant?: 'default' | 'issue' | 'pending';
-  fieldName?: string;
 };
 
 export function ReviewIssueCard({
@@ -45,7 +44,6 @@ export function ReviewIssueCard({
   applied = false,
   showHeader = true,
   listVariant = 'default',
-  fieldName,
 }: ReviewIssueCardProps) {
   const [activeBasis, setActiveBasis] = useState<ReviewBasis | null>(null);
   const [variantIndex, setVariantIndex] = useState(0);

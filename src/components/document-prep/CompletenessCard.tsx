@@ -13,7 +13,6 @@ type CompletenessCardProps = {
   applied?: boolean;
   showHeader?: boolean;
   listVariant?: 'default' | 'issue' | 'pending';
-  fieldName?: string;
 };
 
 export function CompletenessCard({
@@ -27,7 +26,6 @@ export function CompletenessCard({
   applied,
   showHeader = true,
   listVariant = 'default',
-  fieldName,
 }: CompletenessCardProps) {
   return (
     <ReviewIssueCard
@@ -51,7 +49,6 @@ export function CompletenessCard({
       applied={applied}
       showHeader={showHeader}
       listVariant={listVariant}
-      fieldName={fieldName}
     />
   );
 }
