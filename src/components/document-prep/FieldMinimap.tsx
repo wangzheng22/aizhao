@@ -14,6 +14,7 @@ type FieldMinimapProps = {
 function statusLabel(status: ChapterFieldStatus) {
   if (status === 'missing') return '未完成';
   if (status === 'issue') return '问题';
+  if (status === 'pending') return '待确认';
   return '正常';
 }
 

@@ -1,10 +1,10 @@
-import type { ChapterFieldView, ChapterReviewView } from '../types/chapterReview';
+import type { ChapterFieldStatus, ChapterFieldView, ChapterReviewView } from '../types/chapterReview';
 import type { IssueMarkSpec } from './extractEditableDocument';
 
 export type FieldMarkCategory = 'field-ok' | 'field-missing' | 'field-issue';
 
-export function fieldStatusToMarkCategory(status: 'ok' | 'missing' | 'issue'): FieldMarkCategory {
-  if (status === 'missing') return 'field-missing';
+export function fieldStatusToMarkCategory(status: ChapterFieldStatus): FieldMarkCategory {
+  if (status === 'missing' || status === 'pending') return 'field-missing';
   if (status === 'issue') return 'field-issue';
   return 'field-ok';
 }

@@ -58,6 +58,11 @@ function defaultExtractBasis(fieldDef: ChapterFieldDef, sourceFileName: string):
   };
 }
 
+export function isExtractedValueEmpty(raw: string) {
+  const v = raw.trim();
+  return v.length === 0 || v === '未抽提到';
+}
+
 function pickFieldBases(
   fieldDef: ChapterFieldDef,
   sourceFileName: string,
@@ -77,7 +82,7 @@ function buildFieldView(
   sourceFileName: string,
 ): ChapterFieldView {
   const raw = fieldDef.extractedValue?.trim() ?? '';
-  const extractedValue = raw || '未抽提到';
+  const extractedValue = isExtractedValueEmpty(raw) ? '未抽提到' : raw;
   const searchText = pickSearchText(fieldDef, completeness, smart);
   const pageHint = pickPageHint(fieldDef, completeness, smart);
   const bases = pickFieldBases(fieldDef, sourceFileName, completeness, smart);
@@ -92,16 +97,18 @@ function buildFieldView(
             ...(pageHint != null ? { pageHint } : {}),
           }
         : completeness;
+    const emptyField = isExtractedValueEmpty(raw);
+    const openStatus = emptyField ? 'missing' : 'pending';
     return {
       id: fieldDef.id,
       fieldName: fieldDef.fieldName,
       extractedValue,
-      status: isOpen ? 'missing' : 'ok',
+      status: isOpen ? openStatus : 'ok',
       markTargetId: completeness.id,
       searchText: searchText || undefined,
       pageHint,
       issueId: completeness.id,
-      issueKind: 'missing',
+      issueKind: isOpen ? openStatus : undefined,
       completenessIssue: isOpen ? anchoredIssue : undefined,
       bases: isOpen ? undefined : bases,
     };
@@ -132,7 +139,7 @@ function buildFieldView(
     };
   }
 
-  const isBlankExtract = raw.length === 0;
+  const isBlankExtract = isExtractedValueEmpty(raw);
 
   return {
     id: fieldDef.id,
@@ -168,6 +175,7 @@ export function buildChapterReviewCards(
 
     const missingCount = fields.filter((field) => field.status === 'missing').length;
     const issueCount = fields.filter((field) => field.status === 'issue').length;
+    const pendingCount = fields.filter((field) => field.status === 'pending').length;
     const okCount = fields.filter((field) => field.status === 'ok').length;
 
     return {
@@ -176,6 +184,7 @@ export function buildChapterReviewCards(
       fields,
       missingCount,
       issueCount,
+      pendingCount,
       okCount,
     };
   });
@@ -190,7 +199,8 @@ export function countChapterReviewStats(chapters: ChapterReviewView[]) {
     (acc, chapter) => ({
       missing: acc.missing + chapter.missingCount,
       issue: acc.issue + chapter.issueCount,
+      pending: acc.pending + chapter.pendingCount,
     }),
-    { missing: 0, issue: 0 },
+    { missing: 0, issue: 0, pending: 0 },
   );
 }

@@ -1,0 +1,55 @@
+.unfinished-field-block {
+  margin-top: 8px;
+}
+
+.unfinished-field-block__panel {
+  margin-top: 0;
+  padding: 10px 12px 12px;
+  border-radius: 6px;
+  background: #eef1f6;
+}
+
+.unfinished-field-block__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.unfinished-field-block__panel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #262626;
+}
+
+.unfinished-field-block__ai-badge {
+  width: 23px;
+  height: 13px;
+  object-fit: contain;
+}
+
+.unfinished-field-block__input {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  line-height: 20px;
+  color: #262626;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.unfinished-field-block__input:focus {
+  outline: none;
+  border-color: #3671ff;
+  box-shadow: 0 0 0 2px rgba(54, 113, 255, 0.12);
+}

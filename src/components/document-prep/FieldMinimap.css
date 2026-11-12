@@ -55,6 +55,10 @@
   background-color: #9254de;
 }
 
+.field-minimap__mark--pending {
+  background-color: #f5222d;
+}
+
 .field-minimap__mark--ok {
   background-color: #52c41a;
 }
@@ -147,6 +151,10 @@
 
 .field-minimap__dot--issue {
   background: #9254de;
+}
+
+.field-minimap__dot--pending {
+  background: #f5222d;
 }
 
 .field-minimap__dot--ok {

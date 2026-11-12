@@ -9,7 +9,7 @@ import { ChapterReviewCard } from './ChapterReviewCard';
 import './ChapterReviewCard.css';
 import './ReviewChecklistPanel.css';
 
-export type ReviewFilter = 'all' | 'missing' | 'issue' | 'ok';
+export type ReviewFilter = 'all' | 'missing' | 'issue' | 'pending' | 'ok';
 
 export type ReviewLocateRequest = {
   id: string;
@@ -25,6 +25,8 @@ export type ChapterLocateRequest = {
   expanding?: boolean;
   /** 同步滚动到章节内某一字段块 */
   fieldId?: string;
+  /** 为 true 时不切换编审清单 Tab（保留当前筛选） */
+  preserveFilter?: boolean;
 };
 
 type ReviewChecklistPanelProps = {
@@ -43,6 +45,7 @@ type ReviewChecklistPanelProps = {
   appliedIssueIds?: string[];
   onApplySuggestion?: (issueId: string, suggestion: string) => void;
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
+  onConfirmUnfinishedUpload?: () => void;
   onFieldLabelClick?: (chapterId: string, field: ChapterFieldView) => void;
   activeMarkId?: string | null;
   /** 缩略条/字段目录点击时同步筛选 Tab */
@@ -70,6 +73,7 @@ export function ReviewChecklistPanel({
   appliedIssueIds = [],
   onApplySuggestion,
   onRegenerateSuggestion,
+  onConfirmUnfinishedUpload,
   onFieldLabelClick,
   activeMarkId = null,
   focusFilter = null,
@@ -80,7 +84,7 @@ export function ReviewChecklistPanel({
   const [filter, setFilter] = useState<ReviewFilter>('all');
   const [decrementAnim, setDecrementAnim] = useState<{
     key: number;
-    targets: Array<'all' | 'missing' | 'issue' | 'ok'>;
+    targets: Array<'all' | 'missing' | 'issue' | 'pending' | 'ok'>;
   } | null>(null);
   const prevAppliedRef = useRef<string[]>(appliedIssueIds);
   const appliedSetForScrollRef = useRef(new Set(appliedIssueIds));
@@ -128,7 +132,7 @@ export function ReviewChecklistPanel({
   }, [open, locateRequest?.token, locateRequest?.id, locateRequest?.expanding]);
 
   useEffect(() => {
-    if (!chapterLocateRequest) return;
+    if (!chapterLocateRequest || chapterLocateRequest.preserveFilter) return;
     setFilter('all');
   }, [chapterLocateRequest]);
 
@@ -185,10 +189,11 @@ export function ReviewChecklistPanel({
     prevAppliedRef.current = appliedIssueIds;
     if (!newlyApplied.length) return;
 
-    const targets = new Set<'all' | 'missing' | 'issue' | 'ok'>(['all']);
+    const targets = new Set<'all' | 'missing' | 'issue' | 'pending' | 'ok'>(['all']);
     newlyApplied.forEach((id) => {
       if (missingIssues.some((issue) => issue.id === id)) targets.add('missing');
       if (problemIssues.some((issue) => issue.id === id)) targets.add('issue');
+      if (!problemIssues.some((issue) => issue.id === id)) targets.add('pending');
     });
 
     setDecrementAnim({ key: Date.now(), targets: [...targets] });
@@ -200,9 +205,10 @@ export function ReviewChecklistPanel({
         all: acc.all + chapter.fields.length,
         missing: acc.missing + chapter.missingCount,
         issue: acc.issue + chapter.issueCount,
+        pending: acc.pending + chapter.pendingCount,
         ok: acc.ok + chapter.okCount,
       }),
-      { all: 0, missing: 0, issue: 0, ok: 0 },
+      { all: 0, missing: 0, issue: 0, pending: 0, ok: 0 },
     );
   }, [chapterCards]);
 
@@ -213,6 +219,7 @@ export function ReviewChecklistPanel({
       if (chapterFilter === 'all') return chapter.fields.length > 0;
       if (chapterFilter === 'missing') return chapter.missingCount > 0;
       if (chapterFilter === 'issue') return chapter.issueCount > 0;
+      if (chapterFilter === 'pending') return chapter.pendingCount > 0;
       return chapter.okCount > 0;
     });
   }, [chapterCards, chapterFilter]);
@@ -231,6 +238,7 @@ export function ReviewChecklistPanel({
     { key: 'all', label: '全部' },
     { key: 'missing', label: '未完成项' },
     { key: 'issue', label: '问题项' },
+    { key: 'pending', label: '待确认' },
     { key: 'ok', label: '正常项' },
   ];
 
@@ -323,6 +331,7 @@ export function ReviewChecklistPanel({
               }}
               onApplySuggestion={onApplySuggestion}
               onRegenerateSuggestion={onRegenerateSuggestion}
+              onConfirmUnfinishedUpload={onConfirmUnfinishedUpload}
               onFieldLabelClick={onFieldLabelClick}
               activeMarkId={activeMarkId}
               entranceDelayMs={entranceFromScan ? chapterIndex * 55 : 0}

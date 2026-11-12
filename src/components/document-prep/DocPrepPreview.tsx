@@ -50,15 +50,22 @@ const DOC_SCAN_SWEEP_DURATION_MS = 2800;
 /** 编审清单章节卡片错峰飞入结束后移除动效 class（约最后一章 delay + 动画时长） */
 const CHECKLIST_CARD_ENTRANCE_CLEAR_MS = 1200;
 
-function filterForAnchorCategory(category?: FieldAnchor['category']): ReviewFilter {
-  if (category === 'completeness') return 'missing';
+function filterForAnchorCategory(
+  category?: FieldAnchor['category'],
+  field?: ChapterFieldView,
+): ReviewFilter {
+  if (field?.status === 'missing') return 'missing';
+  if (field?.status === 'pending') return 'pending';
+  if (field?.status === 'issue') return 'issue';
   if (category === 'smart-review') return 'issue';
+  if (category === 'completeness') return 'pending';
   return 'all';
 }
 
 function fieldStatusToReviewFilter(status: ChapterFieldStatus): ReviewFilter {
   if (status === 'missing') return 'missing';
   if (status === 'issue') return 'issue';
+  if (status === 'pending') return 'pending';
   return 'ok';
 }
 
@@ -233,7 +240,7 @@ export function DocPrepPreview({
 
   const issueMarks = useMemo((): IssueMarkSpec[] => {
     const fieldMarks = buildChapterFieldMarks(chapterReviewCards, {
-      includeStatuses: ['missing', 'issue'],
+      includeStatuses: ['missing', 'issue', 'pending'],
     });
     const covered = new Set(fieldMarks.map((mark) => mark.id));
     const extras: IssueMarkSpec[] = [];
@@ -313,7 +320,7 @@ export function DocPrepPreview({
   }, []);
 
   const scrollReviewToChapter = useCallback(
-    (chapterId: string, fieldId?: string) => {
+    (chapterId: string, fieldId?: string, options?: { preserveFilter?: boolean }) => {
       const expanding = !reviewOpen;
       if (expanding) {
         setReviewOpen(true);
@@ -323,6 +330,7 @@ export function DocPrepPreview({
         fieldId,
         token: (prev?.token ?? 0) + 1,
         expanding,
+        preserveFilter: options?.preserveFilter,
       }));
     },
     [reviewOpen],
@@ -428,6 +436,10 @@ export function DocPrepPreview({
     onNotice?.('AI 修改建议已重新生成');
   }, [onNotice]);
 
+  const handleConfirmUnfinishedUpload = useCallback(() => {
+    onNotice?.('请到项目信息页面上传相关材料，AI 将自动识别填充；也可在卡片内手动输入后点击确认。');
+  }, [onNotice]);
+
   const openReviewPanel = useCallback(() => {
     setReviewOpen(true);
   }, []);
@@ -475,7 +487,7 @@ export function DocPrepPreview({
         scrollToPage(bodyPage);
       }
       syncTocToChapter(chapterId, bodyPage);
-      scrollReviewToChapter(chapterId, field.id);
+      scrollReviewToChapter(chapterId, field.id, { preserveFilter: true });
       setActiveMarkId(locateMarkId);
       setActiveItemId(field.issueId ?? field.id);
       setPendingFieldLocate({
@@ -499,7 +511,7 @@ export function DocPrepPreview({
         entry.field.pageHint ?? getChapterDocumentPage(entry.chapterId) ?? undefined;
       if (bodyPage) scrollToPage(bodyPage);
       syncTocToChapter(entry.chapterId, bodyPage);
-      scrollReviewToChapter(entry.chapterId, entry.field.id);
+      scrollReviewToChapter(entry.chapterId, entry.field.id, { preserveFilter: true });
       setActiveMarkId(entry.field.id);
       setActiveItemId(entry.field.issueId ?? entry.field.id);
     },
@@ -521,15 +533,7 @@ export function DocPrepPreview({
           handleFieldLabelClick(chapterId, field);
         }
         if (field.issueId) {
-          const filter: ReviewFilter =
-            field.status === 'missing'
-              ? 'missing'
-              : field.status === 'issue'
-                ? 'issue'
-                : field.status === 'ok'
-                  ? 'ok'
-                  : 'all';
-          locateChecklistItem(field.issueId, filter);
+          locateChecklistItem(field.issueId, fieldStatusToReviewFilter(field.status));
         }
         return;
       }
@@ -542,7 +546,8 @@ export function DocPrepPreview({
           ? 'smart-review'
           : getEditableIssueAnchor(markId)?.category;
       setActiveMarkId(markId);
-      locateChecklistItem(markId, filterForAnchorCategory(category));
+      const resolvedField = fieldByMarkId.get(markId);
+      locateChecklistItem(markId, filterForAnchorCategory(category, resolvedField));
     },
     [
       fieldByMarkId,
@@ -966,6 +971,7 @@ export function DocPrepPreview({
                   appliedIssueIds={appliedIssueIds}
                   onApplySuggestion={handleApplySuggestion}
                   onRegenerateSuggestion={handleRegenerateSuggestion}
+                  onConfirmUnfinishedUpload={handleConfirmUnfinishedUpload}
                   onFieldLabelClick={handleFieldLabelClick}
                   activeMarkId={activeMarkId}
                   focusFilter={checklistFilterFromMinimap}

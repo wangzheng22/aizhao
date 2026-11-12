@@ -155,8 +155,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 4px;
+  gap: 2px;
+  padding: 6px 2px;
   border: none;
   border-right: 1px solid #e5e5e5;
   background: transparent;
@@ -201,6 +201,11 @@
   color: #531dab;
 }
 
+.review-checklist__segment-item[data-filter='pending'] > span,
+.review-checklist__segment-item[data-filter='pending'] em {
+  color: #cf1322;
+}
+
 .review-checklist__segment-item[data-filter='ok'] > span,
 .review-checklist__segment-item[data-filter='ok'] em {
   color: #389e0d;
@@ -220,6 +225,10 @@
 
 .review-checklist__segment-item--active[data-filter='issue'] {
   background: #f9f0ff;
+}
+
+.review-checklist__segment-item--active[data-filter='pending'] {
+  background: #fff1f0;
 }
 
 .review-checklist__segment-item--active[data-filter='ok'] {

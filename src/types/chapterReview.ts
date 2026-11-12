@@ -2,7 +2,7 @@ import type { ResolvedCompletenessIssue } from './completeness';
 import type { ReviewBasis } from './reviewCard';
 import type { ResolvedSmartReviewIssue } from './smartReview';
 
-export type ChapterFieldStatus = 'ok' | 'missing' | 'issue';
+export type ChapterFieldStatus = 'ok' | 'missing' | 'issue' | 'pending';
 
 export type ChapterFieldView = {
   id: string;
@@ -17,7 +17,7 @@ export type ChapterFieldView = {
   searchText?: string;
   pageHint?: number;
   issueId?: string;
-  issueKind?: 'missing' | 'issue';
+  issueKind?: 'missing' | 'issue' | 'pending';
   completenessIssue?: ResolvedCompletenessIssue;
   smartReviewIssue?: ResolvedSmartReviewIssue;
   /** 正常项展示审查/抽提依据 */
@@ -30,6 +30,7 @@ export type ChapterReviewView = {
   fields: ChapterFieldView[];
   missingCount: number;
   issueCount: number;
+  pendingCount: number;
   okCount: number;
 };
 
