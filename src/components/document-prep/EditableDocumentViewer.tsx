@@ -37,6 +37,8 @@ type EditableDocumentViewerProps = {
   focusedIssueId?: string | null;
   onIssueClick?: (issueId: string) => void;
   onSelectionChange?: (selection: EditableSelection | null) => void;
+  /** 首帧可编辑正文已渲染（用于扫描动效等与加载对齐） */
+  onReady?: () => void;
 };
 
 function formatPageHtml(lineHtmlParts: string[], page: EditableDocPage, scale: number) {
@@ -74,6 +76,7 @@ export function EditableDocumentViewer({
   focusedIssueId = null,
   onIssueClick,
   onSelectionChange,
+  onReady,
 }: EditableDocumentViewerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const bodyRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -83,6 +86,22 @@ export function EditableDocumentViewer({
   const hydratedKeyRef = useRef<string>('');
   const appliedRef = useRef(appliedTexts);
   appliedRef.current = appliedTexts;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyGenerationRef = useRef(0);
+
+  const notifyReady = useCallback(() => {
+    if (!onReadyRef.current) return;
+    readyGenerationRef.current += 1;
+    const gen = readyGenerationRef.current;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (readyGenerationRef.current === gen) {
+          onReadyRef.current?.();
+        }
+      });
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +234,7 @@ export function EditableDocumentViewer({
         if (!body) return;
         body.innerHTML = formatPageHtml(lineHtmlParts, page, scale);
       });
+      notifyReady();
       return true;
     };
 
@@ -229,7 +249,7 @@ export function EditableDocumentViewer({
     };
     frame = window.requestAnimationFrame(retry);
     return () => window.cancelAnimationFrame(frame);
-  }, [doc, marks, appliedTexts]);
+  }, [doc, marks, appliedTexts, notifyReady]);
 
   useEffect(() => {
     const root = rootRef.current;

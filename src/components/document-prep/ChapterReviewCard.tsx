@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { ChapterFieldView, ChapterReviewView } from '../../types/chapterReview';
 import type { SuggestionEditHandlers } from '../../types/suggestionEdit';
 import { CompletenessCard } from './CompletenessCard';
@@ -19,6 +20,8 @@ type ChapterReviewCardProps = {
   onFieldLabelClick?: (chapterId: string, field: ChapterFieldView) => void;
   activeMarkId?: string | null;
   filter: ChapterFieldFilter;
+  /** 与 ReviewChecklistPanel 飞入动效配合：章节错峰延迟（毫秒） */
+  entranceDelayMs?: number;
 };
 
 export function ChapterReviewCard({
@@ -33,6 +36,7 @@ export function ChapterReviewCard({
   onFieldLabelClick,
   activeMarkId = null,
   filter,
+  entranceDelayMs = 0,
 }: ChapterReviewCardProps) {
   const appliedSet = new Set(appliedIssueIds);
 
@@ -56,76 +60,59 @@ export function ChapterReviewCard({
   }
 
   return (
-    <article className="chapter-review-card" data-chapter-id={chapter.id}>
-      <header className="chapter-review-card__header">
-        <h3 className="chapter-review-card__title">{chapter.chapterName}</h3>
-        <div className="chapter-review-card__stats">
-          {chapter.missingCount > 0 && (
-            <span className="chapter-review-card__stat chapter-review-card__stat--missing">
-              空白 {chapter.missingCount}
-            </span>
-          )}
-          {chapter.issueCount > 0 && (
-            <span className="chapter-review-card__stat chapter-review-card__stat--issue">
-              问题 {chapter.issueCount}
-            </span>
-          )}
-          {chapter.okCount > 0 && (
-            <span className="chapter-review-card__stat chapter-review-card__stat--ok">
-              正常 {chapter.okCount}
-            </span>
-          )}
-        </div>
-      </header>
+    <section
+      className="chapter-review-section"
+      data-chapter-id={chapter.id}
+      style={
+        entranceDelayMs > 0
+          ? ({
+              ['--review-card-enter-delay']: `${entranceDelayMs}ms`,
+            } as CSSProperties)
+          : undefined
+      }
+    >
+      <h3 className="chapter-review-section__title">{chapter.chapterName}</h3>
 
-      <div className="chapter-review-card__fields">
+      <div className="chapter-review-section__fields">
         {fieldsToRender.map((field) => (
-          <div key={field.id} className="chapter-review-card__field-block" data-field-id={field.id}>
-            <div
-              className={[
-                'chapter-review-card__field-row',
-                field.status !== 'ok' ? `chapter-review-card__field-row--${field.status}` : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              <div className="chapter-review-card__field-head">
-                <button
-                  type="button"
-                  className={[
-                    'chapter-review-card__field-label',
-                    activeMarkId === field.id || activeMarkId === field.markTargetId
-                      ? 'chapter-review-card__field-label--active'
-                      : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  disabled={!field.searchText}
-                  title={field.searchText ? '定位到原文' : '暂无原文定位'}
-                  onClick={() => onFieldLabelClick?.(chapter.id, field)}
-                >
-                  {field.fieldName}
-                </button>
-                {field.status === 'ok' && <span className="chapter-review-card__field-ok">正常</span>}
-                {field.status === 'missing' && (
-                  <span className="chapter-review-card__field-tag chapter-review-card__field-tag--missing">
-                    空白
-                  </span>
-                )}
-                {field.status === 'issue' && (
-                  <span className="chapter-review-card__field-tag chapter-review-card__field-tag--issue">
-                    问题
-                  </span>
-                )}
-              </div>
-              <span className="chapter-review-card__field-value">{field.extractedValue}</span>
+          <article
+            key={field.id}
+            className={[
+              'chapter-field-card',
+              `chapter-field-card--${field.status}`,
+              activeMarkId === field.id || activeMarkId === field.markTargetId
+                ? 'chapter-field-card--active'
+                : '',
+              activeItemId === field.issueId ? 'chapter-field-card--issue-selected' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            data-field-id={field.id}
+            {...(field.issueId ? { 'data-card-id': field.issueId } : {})}
+          >
+            <div className="chapter-field-card__head">
+              <button
+                type="button"
+                className="chapter-field-card__label"
+                disabled={!field.searchText}
+                title={field.searchText ? '定位到原文' : '暂无原文定位'}
+                onClick={() => onFieldLabelClick?.(chapter.id, field)}
+              >
+                {field.fieldName}
+              </button>
+              {field.status === 'ok' && <span className="chapter-field-card__tag chapter-field-card__tag--ok">正常</span>}
+              {field.status === 'missing' && (
+                <span className="chapter-field-card__tag chapter-field-card__tag--missing">空白</span>
+              )}
+              {field.status === 'issue' && (
+                <span className="chapter-field-card__tag chapter-field-card__tag--issue">问题</span>
+              )}
             </div>
 
+            <p className="chapter-field-card__value">{field.extractedValue}</p>
+
             {field.status === 'ok' && field.bases && field.bases.length > 0 && (
-              <ReviewBasisChips
-                bases={field.bases}
-                className="chapter-review-card__field-bases"
-              />
+              <ReviewBasisChips bases={field.bases} className="chapter-field-card__bases" />
             )}
 
             {field.completenessIssue && (
@@ -153,9 +140,9 @@ export function ChapterReviewCard({
                 applied={appliedSet.has(field.issueId!)}
               />
             )}
-          </div>
+          </article>
         ))}
       </div>
-    </article>
+    </section>
   );
 }

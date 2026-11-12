@@ -1,39 +1,61 @@
-import type { ParseStatus, ProjectForm } from '../../../types/documentWorkflow';
-import { SidebarTip } from '../shared/SidebarTip';
+import { useEffect, useRef } from 'react';
+import type { ProjectUploadSectionId } from '../../../constants/projectUploadSections';
+import { scrollSectionIntoContainer } from '../../../utils/scrollSectionIntoContainer';
+import type {
+  ParseStatus,
+  ProjectForm,
+  SectionParseStatusMap,
+} from '../../../types/documentWorkflow';
+import {
+  PROJECT_FORM_SECTIONS,
+  type ProjectFormFieldDef,
+  type ProjectFormFieldKey,
+  type ProjectFormSectionId,
+} from '../../../data/projectFormSchema';
+import { GENERAL_FORM_FIELD_KEYS } from '../../../utils/projectFormSectionFields';
+import type { SectionParseStatus } from '../../../types/documentWorkflow';
+import { SectionAiParsingState } from './SectionAiParsingState';
 import './ProjectInfoPanel.css';
 
 type ProjectInfoPanelProps = {
   form: ProjectForm;
   parseStatus: ParseStatus;
+  sectionParseStatus?: SectionParseStatusMap;
+  typingField?: { sectionId: ProjectFormSectionId; key: ProjectFormFieldKey } | null;
   onChange: (form: ProjectForm) => void;
+  linkedSectionId?: ProjectUploadSectionId | null;
+  anchorSectionId?: ProjectFormSectionId | null;
+  onSectionHover?: (sectionId: ProjectUploadSectionId | null, source?: 'upload' | 'form') => void;
 };
 
-function RequiredLabel({ children }: { children: string }) {
-  return (
-    <label className="project-info__label">
-      <span className="project-info__required" aria-hidden="true">*</span>
-      {children}
-    </label>
-  );
+function deriveGeneralSectionStatus(
+  form: ProjectForm,
+  typingField: ProjectInfoPanelProps['typingField'],
+): SectionParseStatus {
+  if (typingField?.sectionId === 'general') return 'filling';
+  const allFilled = GENERAL_FORM_FIELD_KEYS.every((key) => form[key].trim().length > 0);
+  if (allFilled) return 'done';
+  return 'idle';
 }
 
-type FieldLayout = 'default' | 'full' | 'span2';
+const UNRECOGNIZED_PLACEHOLDER = '未识别，请手动填写';
 
-function TextField({
-  label,
+function FormField({
+  def,
   value,
+  disabled,
+  isTyping,
+  markUnrecognized,
   onChange,
-  required = true,
-  disabled = false,
-  layout = 'default',
 }: {
-  label: string;
+  def: ProjectFormFieldDef;
   value: string;
+  disabled: boolean;
+  isTyping?: boolean;
+  markUnrecognized: boolean;
   onChange: (value: string) => void;
-  required?: boolean;
-  disabled?: boolean;
-  layout?: FieldLayout;
 }) {
+  const layout = def.layout ?? 'default';
   const layoutClass =
     layout === 'full'
       ? ' project-info__field--full'
@@ -41,121 +63,204 @@ function TextField({
         ? ' project-info__field--span2'
         : '';
 
+  const isUnrecognized = markUnrecognized && !value.trim();
+  const fieldClass = [
+    isUnrecognized ? ' project-info__field--unrecognized' : '',
+    isTyping ? ' project-info__field--typing' : '',
+  ].join('');
+  const controlClass = [
+    isUnrecognized ? ' project-info__control--unrecognized' : '',
+    isTyping ? ' project-info__control--typing' : '',
+  ].join('');
+
+  const labelClass = isUnrecognized
+    ? 'project-info__label project-info__label--unrecognized'
+    : 'project-info__label';
+
+  const labelNode = def.required ? (
+    <label className={labelClass}>
+      <span className="project-info__required" aria-hidden="true">
+        *
+      </span>
+      {def.label}
+      {isUnrecognized && (
+        <span className="project-info__unrecognized-tag" aria-hidden="true">
+          未识别
+        </span>
+      )}
+    </label>
+  ) : (
+    <label className={labelClass}>
+      {def.label}
+      {isUnrecognized && (
+        <span className="project-info__unrecognized-tag" aria-hidden="true">
+          未识别
+        </span>
+      )}
+    </label>
+  );
+
   return (
-    <div className={`project-info__field${layoutClass}`}>
-      {required ? <RequiredLabel>{label}</RequiredLabel> : <label className="project-info__label">{label}</label>}
-      <input
-        type="text"
-        className="project-info__input"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      />
+    <div className={`project-info__field${layoutClass}${fieldClass}`}>
+      {labelNode}
+      {def.multiline ? (
+        <textarea
+          className={`project-info__textarea${controlClass}`}
+          value={value}
+          disabled={disabled}
+          rows={3}
+          placeholder={isUnrecognized ? UNRECOGNIZED_PLACEHOLDER : undefined}
+          aria-invalid={isUnrecognized || undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          type="text"
+          className={`project-info__input${controlClass}`}
+          value={value}
+          disabled={disabled}
+          placeholder={isUnrecognized ? UNRECOGNIZED_PLACEHOLDER : undefined}
+          aria-invalid={isUnrecognized || undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({
+  children,
+  showDone,
+}: {
+  children: string;
+  showDone?: boolean;
+}) {
   return (
     <h3 className="project-info__section-title">
-      <span className="project-info__section-bar" aria-hidden="true" />
+      {showDone ? (
+        <span className="project-info__section-done" aria-hidden="true" title="本分区已识别完成">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="#b7eb8f" strokeWidth="1.2" fill="#f6ffed" />
+            <path
+              d="M4.5 8.2 7.1 10.7 11.5 5.3"
+              stroke="#52c41a"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      ) : (
+        <span className="project-info__section-bar" aria-hidden="true" />
+      )}
       {children}
     </h3>
   );
 }
 
-function ParsingState() {
-  return (
-    <div className="project-info__parsing" role="status" aria-live="polite">
-      <div className="project-info__parsing-spinner" aria-hidden="true" />
-      <p className="project-info__parsing-title">正在解析项目信息…</p>
-      <p className="project-info__parsing-desc">AI 正在从上传文件中提取项目基本信息</p>
-    </div>
-  );
-}
+export function ProjectInfoPanel({
+  form,
+  parseStatus,
+  sectionParseStatus,
+  typingField = null,
+  onChange,
+  linkedSectionId = null,
+  anchorSectionId = null,
+  onSectionHover,
+}: ProjectInfoPanelProps) {
+  const cardsScrollRef = useRef<HTMLDivElement>(null);
 
-export function ProjectInfoPanel({ form, parseStatus, onChange }: ProjectInfoPanelProps) {
+  useEffect(() => {
+    if (!anchorSectionId || !cardsScrollRef.current) return;
+    const target = cardsScrollRef.current.querySelector<HTMLElement>(
+      `[data-form-section="${anchorSectionId}"]`,
+    );
+    if (!target) return;
+    scrollSectionIntoContainer(cardsScrollRef.current, target);
+  }, [anchorSectionId]);
+
   const update = <K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) => {
     onChange({ ...form, [key]: value });
   };
 
-  const isParsing = parseStatus === 'parsing';
-  const isDisabled = isParsing;
+  const anySectionParsed = sectionParseStatus
+    ? Object.values(sectionParseStatus).some((status) => status === 'done')
+    : parseStatus === 'done';
 
   return (
     <>
-      <SidebarTip
-        lines={
-          isParsing
-            ? ['正在从上传文件中提取项目信息，请稍候…']
-            : ['检查项目信息，如有缺失可手动补充']
-        }
-      />
+      <div ref={cardsScrollRef} className="project-info project-info--cards">
+        {PROJECT_FORM_SECTIONS.map((section) => {
+          const uploadSectionId =
+            section.id === 'general' ? null : (section.id as ProjectUploadSectionId);
+          const participatesInUploadLink = uploadSectionId != null;
 
-      {isParsing ? (
-        <ParsingState />
-      ) : (
-        <div className="project-info project-info--grid">
-          <SectionTitle>项目信息</SectionTitle>
+          const sectionStatus =
+            section.id === 'general'
+              ? deriveGeneralSectionStatus(form, typingField)
+              : (sectionParseStatus?.[uploadSectionId!] ?? 'idle');
+          const isSectionParsing = sectionStatus === 'parsing';
+          const isSectionFilling = sectionStatus === 'filling';
+          const showSectionDone = sectionStatus === 'done' && !isSectionParsing && !isSectionFilling;
+          const markSectionUnrecognized =
+            !isSectionParsing &&
+            !isSectionFilling &&
+            (section.id === 'general'
+              ? anySectionParsed
+              : sectionParseStatus != null
+                ? sectionStatus === 'done' || (sectionStatus === 'idle' && anySectionParsed)
+                : parseStatus === 'done');
 
-          <TextField
-            label="项目名称"
-            value={form.projectName}
-            disabled={isDisabled}
-            onChange={(v) => update('projectName', v)}
-            layout="full"
-          />
-          <TextField
-            label="行业类型"
-            value={form.industryType}
-            disabled={isDisabled}
-            onChange={(v) => update('industryType', v)}
-          />
-          <TextField
-            label="专业类型"
-            value={form.professionalType}
-            disabled={isDisabled}
-            onChange={(v) => update('professionalType', v)}
-          />
-          <TextField
-            label="资金来源及比例"
-            value={form.fundSourceAndRatio}
-            disabled={isDisabled}
-            onChange={(v) => update('fundSourceAndRatio', v)}
-          />
-          <TextField
-            label="招标方式"
-            value={form.biddingMethod}
-            disabled={isDisabled}
-            onChange={(v) => update('biddingMethod', v)}
-          />
-          <TextField
-            label="建设地点"
-            value={form.constructionLocation}
-            disabled={isDisabled}
-            onChange={(v) => update('constructionLocation', v)}
-          />
-          <TextField
-            label="招标控制价"
-            value={form.tenderControlPrice}
-            disabled={isDisabled}
-            onChange={(v) => update('tenderControlPrice', v)}
-          />
-          <TextField
-            label="评标方法"
-            value={form.bidEvaluationMethod}
-            disabled={isDisabled}
-            onChange={(v) => update('bidEvaluationMethod', v)}
-            layout="span2"
-          />
-          <TextField
-            label="资格审查方式"
-            value={form.qualificationReviewMethod}
-            disabled={isDisabled}
-            onChange={(v) => update('qualificationReviewMethod', v)}
-          />
-        </div>
-      )}
+          const isLinked = participatesInUploadLink && linkedSectionId === uploadSectionId;
+          const isDimmed =
+            participatesInUploadLink && linkedSectionId != null && !isLinked;
+
+          return (
+            <article
+              key={section.id}
+              className={[
+                'project-info__section-card',
+                isSectionParsing ? 'project-info__section-card--parsing' : '',
+                isSectionFilling ? 'project-info__section-card--filling' : '',
+                isLinked ? 'project-info__section-card--linked' : '',
+                isDimmed ? 'project-info__section-card--dimmed' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              id={`project-form-section-${section.id}`}
+              data-form-section={section.id}
+              onMouseEnter={() => {
+                if (uploadSectionId) onSectionHover?.(uploadSectionId, 'form');
+              }}
+              onMouseLeave={() => onSectionHover?.(null)}
+            >
+              <SectionTitle showDone={showSectionDone}>{section.title}</SectionTitle>
+
+              {isSectionParsing ? (
+                <SectionAiParsingState sectionTitle={section.title} />
+              ) : (
+                <div className="project-info__section-grid">
+                  {section.fields.map((fieldDef) => (
+                    <FormField
+                      key={fieldDef.key}
+                      def={fieldDef}
+                      value={form[fieldDef.key]}
+                      disabled={isSectionFilling}
+                      isTyping={
+                        isSectionFilling &&
+                        typingField?.sectionId === section.id &&
+                        typingField.key === fieldDef.key
+                      }
+                      markUnrecognized={markSectionUnrecognized}
+                      onChange={(value) => update(fieldDef.key, value)}
+                    />
+                  ))}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
     </>
   );
 }

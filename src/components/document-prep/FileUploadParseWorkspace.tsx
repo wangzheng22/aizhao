@@ -1,14 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import {
+  PROJECT_UPLOAD_SECTION_ORDER,
+  type ProjectUploadSectionId,
+} from '../../constants/projectUploadSections';
+import type { ProjectFormSectionId } from '../../data/projectFormSchema';
+import { useSectionUploadParsing } from '../../hooks/useSectionUploadParsing';
+import { RECOMMENDED_PROJECT_TEMPLATE } from '../../data/projectTemplates';
 import { UploadPanel } from './panels/UploadPanel';
 import { ProjectInfoPanel } from './panels/ProjectInfoPanel';
-import { TemplatePanel } from './panels/TemplatePanel';
-import { SidebarFooter } from './shared/SidebarFooter';
-import { parsedProjectForm } from '../../data/parsedProjectInfo';
-import type { ParseStatus, ProjectForm, UploadFiles } from '../../types/documentWorkflow';
-import { emptyProjectForm } from '../../types/documentWorkflow';
+import { ProjectInfoNextStepBar } from './ProjectInfoNextStepBar';
+import type { ProjectForm, UploadFiles } from '../../types/documentWorkflow';
+import { computeProjectInfoCompleteness } from '../../utils/projectFormCompletion';
+import './shared/SidebarFooter.css';
 import '../../pages/FileUploadParsePage.css';
 
-const PARSE_DELAY_MS = 1800;
+const SECTION_LINK_CLEAR_MS = 140;
 
 function hasUploadedFiles(files: UploadFiles) {
   return Object.values(files).some((sectionFiles) => sectionFiles.length > 0);
@@ -18,7 +32,7 @@ type FileUploadParseWorkspaceProps = {
   uploadFiles: UploadFiles;
   onUploadFilesChange: (files: UploadFiles) => void;
   projectForm: ProjectForm;
-  onProjectFormChange: (form: ProjectForm) => void;
+  onProjectFormChange: Dispatch<SetStateAction<ProjectForm>>;
   selectedTemplateId: string;
   onTemplateSelect: (id: string) => void;
   /** 嵌入编审页时为 true，不预留底栏占位 */
@@ -40,61 +54,78 @@ export function FileUploadParseWorkspace({
   showGenerateFooter = false,
   generating = false,
   onGenerate,
-  onSave,
 }: FileUploadParseWorkspaceProps) {
-  const [parseStatus, setParseStatus] = useState<ParseStatus>(() =>
-    hasUploadedFiles(uploadFiles) ? 'done' : 'idle',
+  const { sectionParseStatus, parseStatus, generateReady, typingField } = useSectionUploadParsing(
+    uploadFiles,
+    projectForm,
+    onProjectFormChange,
+    { embedded },
   );
-  const parseTimerRef = useRef<number | null>(null);
-  const parsedUploadKeyRef = useRef<string | null>(null);
+
+  const [linkedSectionId, setLinkedSectionId] = useState<ProjectUploadSectionId | null>(null);
+  const [projectAnchorSectionId, setProjectAnchorSectionId] =
+    useState<ProjectFormSectionId | null>(null);
+  const [uploadAnchorSectionId, setUploadAnchorSectionId] =
+    useState<ProjectUploadSectionId | null>(null);
+  const sectionLinkTimerRef = useRef<number | null>(null);
+  const autoTemplateAppliedRef = useRef(false);
+
+  const handleSectionHover = useCallback(
+    (sectionId: ProjectUploadSectionId | null, source?: 'upload' | 'form') => {
+      if (sectionLinkTimerRef.current !== null) {
+        window.clearTimeout(sectionLinkTimerRef.current);
+        sectionLinkTimerRef.current = null;
+      }
+      if (sectionId) {
+        setLinkedSectionId(sectionId);
+        if (source === 'upload') {
+          setProjectAnchorSectionId(sectionId);
+        }
+        if (source === 'form') {
+          setUploadAnchorSectionId(sectionId);
+        }
+        return;
+      }
+      sectionLinkTimerRef.current = window.setTimeout(() => {
+        setLinkedSectionId(null);
+        sectionLinkTimerRef.current = null;
+      }, SECTION_LINK_CLEAR_MS);
+    },
+    [],
+  );
 
   const hasFiles = hasUploadedFiles(uploadFiles);
-  const uploadFilesKey = JSON.stringify(uploadFiles);
+  const showNextStepBar = showGenerateFooter && hasFiles;
+  const projectInfoCompleteness = useMemo(
+    () => computeProjectInfoCompleteness(projectForm, uploadFiles),
+    [projectForm, uploadFiles],
+  );
 
   useEffect(() => {
-    if (!hasUploadedFiles(uploadFiles)) {
-      if (parseTimerRef.current !== null) {
-        window.clearTimeout(parseTimerRef.current);
-        parseTimerRef.current = null;
-      }
-      parsedUploadKeyRef.current = null;
-      setParseStatus('idle');
-      onProjectFormChange(emptyProjectForm);
+    if (!hasFiles) {
+      autoTemplateAppliedRef.current = false;
       return;
     }
-
-    if (uploadFilesKey === parsedUploadKeyRef.current) {
-      return;
+    if (!autoTemplateAppliedRef.current) {
+      autoTemplateAppliedRef.current = true;
+      onTemplateSelect(RECOMMENDED_PROJECT_TEMPLATE.id);
     }
+  }, [hasFiles, onTemplateSelect]);
 
-    const isFirstSeen = parsedUploadKeyRef.current === null;
-    parsedUploadKeyRef.current = uploadFilesKey;
-
-    if (embedded && isFirstSeen && projectForm.projectName.trim()) {
-      setParseStatus('done');
-      return;
+  useEffect(() => {
+    const parsingSection = PROJECT_UPLOAD_SECTION_ORDER.find(
+      (sectionId) => sectionParseStatus[sectionId] === 'parsing',
+    );
+    if (parsingSection) {
+      setProjectAnchorSectionId(parsingSection);
+      setLinkedSectionId(parsingSection);
     }
-
-    if (parseTimerRef.current !== null) {
-      window.clearTimeout(parseTimerRef.current);
-      parseTimerRef.current = null;
-    }
-
-    setParseStatus('parsing');
-    onProjectFormChange(emptyProjectForm);
-
-    parseTimerRef.current = window.setTimeout(() => {
-      onProjectFormChange(parsedProjectForm);
-      setParseStatus('done');
-      parseTimerRef.current = null;
-    }, PARSE_DELAY_MS);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅随上传文件变化触发解析
-  }, [uploadFilesKey, embedded, uploadFiles]);
+  }, [sectionParseStatus]);
 
   useEffect(
     () => () => {
-      if (parseTimerRef.current !== null) {
-        window.clearTimeout(parseTimerRef.current);
+      if (sectionLinkTimerRef.current !== null) {
+        window.clearTimeout(sectionLinkTimerRef.current);
       }
     },
     [],
@@ -103,6 +134,7 @@ export function FileUploadParseWorkspace({
   const bodyClass = [
     'file-upload-parse-page__body',
     embedded ? 'file-upload-parse-page__body--embedded' : '',
+    showNextStepBar ? 'file-upload-parse-page__body--with-next-bar' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -113,19 +145,64 @@ export function FileUploadParseWorkspace({
         <section className="file-upload-parse-page__upload" aria-label="文件上传">
           <h2 className="file-upload-parse-page__panel-title">文件上传</h2>
           <div className="doc-prep-sidebar__panel file-upload-parse-page__upload-panel">
-            <UploadPanel files={uploadFiles} onFilesChange={onUploadFilesChange} />
+            <UploadPanel
+              files={uploadFiles}
+              onFilesChange={onUploadFilesChange}
+              linkedSectionId={linkedSectionId}
+              sectionParseStatus={sectionParseStatus}
+              anchorSectionId={uploadAnchorSectionId}
+              onSectionHover={handleSectionHover}
+            />
           </div>
         </section>
         <section className="file-upload-parse-page__project" aria-label="项目信息">
-          <h2 className="file-upload-parse-page__panel-title">项目信息</h2>
-          <div className="file-upload-parse-page__project-body">
-            <ProjectInfoPanel form={projectForm} parseStatus={parseStatus} onChange={onProjectFormChange} />
+          <div className="file-upload-parse-page__panel-head">
+            <h2 className="file-upload-parse-page__panel-title">项目信息</h2>
+            <span
+              className={[
+                'file-upload-parse-page__completeness',
+                projectInfoCompleteness >= 100
+                  ? 'file-upload-parse-page__completeness--complete'
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-label={
+                projectInfoCompleteness >= 100
+                  ? '信息完整度 100%，已全部识别'
+                  : `信息完整度 ${projectInfoCompleteness}%`
+              }
+            >
+              信息完整度 {projectInfoCompleteness}%
+              {projectInfoCompleteness >= 100 && (
+                <span className="file-upload-parse-page__completeness-check" aria-hidden="true">
+                  <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle
+                      className="file-upload-parse-page__completeness-check-circle"
+                      cx="9"
+                      cy="9"
+                      r="7.25"
+                    />
+                    <path
+                      className="file-upload-parse-page__completeness-check-path"
+                      d="M5.25 9.15 7.85 11.75 12.75 6.35"
+                    />
+                  </svg>
+                </span>
+              )}
+            </span>
           </div>
-        </section>
-        <section className="file-upload-parse-page__template" aria-label="范本选择">
-          <h2 className="file-upload-parse-page__panel-title">范本选择</h2>
-          <div className="doc-prep-sidebar__panel file-upload-parse-page__template-panel">
-            <TemplatePanel selectedId={selectedTemplateId} onSelect={onTemplateSelect} />
+          <div className="file-upload-parse-page__project-body">
+            <ProjectInfoPanel
+              form={projectForm}
+              parseStatus={parseStatus}
+              sectionParseStatus={sectionParseStatus}
+              typingField={typingField}
+              onChange={onProjectFormChange}
+              linkedSectionId={linkedSectionId}
+              anchorSectionId={projectAnchorSectionId}
+              onSectionHover={handleSectionHover}
+            />
           </div>
         </section>
       </div>
@@ -133,18 +210,19 @@ export function FileUploadParseWorkspace({
       {showGenerateFooter && (
         <footer
           className={[
-            'file-upload-parse-page__footer',
-            embedded ? 'file-upload-parse-page__footer--embedded' : '',
+            'file-upload-parse-page__next-bar',
+            showNextStepBar ? 'file-upload-parse-page__next-bar--visible' : '',
+            embedded ? 'file-upload-parse-page__next-bar--embedded' : '',
           ]
             .filter(Boolean)
             .join(' ')}
+          aria-hidden={!showNextStepBar}
         >
-          <SidebarFooter
-            showSave={Boolean(onSave)}
-            showGenerate
+          <ProjectInfoNextStepBar
+            selectedTemplateId={selectedTemplateId}
+            onTemplateSelect={onTemplateSelect}
             generating={generating}
-            generateDisabled={!hasFiles || parseStatus !== 'done'}
-            onSave={onSave}
+            generateDisabled={!generateReady}
             onGenerate={onGenerate}
           />
         </footer>

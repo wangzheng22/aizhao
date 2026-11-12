@@ -4,33 +4,35 @@
 }
 
 .file-upload-parse-page__body {
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  padding-top: 60px;
-  padding-bottom: 64px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 20px;
+  padding: 20px;
+  padding-top: 80px;
   height: 100vh;
   overflow: hidden;
-  gap: 0;
 }
 
 .file-upload-parse-page--with-progress .file-upload-parse-page__body {
-  padding-top: 63px;
+  padding-top: 83px;
 }
 
-.file-upload-parse-page__upload,
-.file-upload-parse-page__project,
-.file-upload-parse-page__template {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-  background: #fff;
-  overflow: hidden;
+.file-upload-parse-page__body--with-next-bar {
+  padding-bottom: 56px;
 }
 
 .file-upload-parse-page__upload,
 .file-upload-parse-page__project {
-  border-right: 1px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .file-upload-parse-page__upload-panel {
@@ -46,50 +48,138 @@
   overflow: hidden;
 }
 
-.file-upload-parse-page__template-panel {
-  flex: 1;
-  min-height: 0;
-}
-
 .file-upload-parse-page__project .project-info {
   padding: 8px 16px 16px;
 }
 
-.file-upload-parse-page__panel-title {
+.file-upload-parse-page__panel-head {
   flex-shrink: 0;
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px 0;
+}
+
+.file-upload-parse-page__upload > .file-upload-parse-page__panel-title {
+  flex-shrink: 0;
+  padding: 14px 16px 0;
+}
+
+.file-upload-parse-page__panel-title {
+  margin: 0;
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
   color: #333;
 }
 
-.file-upload-parse-page__footer {
+.file-upload-parse-page__completeness {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.file-upload-parse-page__completeness--complete {
+  color: #389e0d;
+  font-weight: 500;
+}
+
+.file-upload-parse-page__completeness-check {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  animation: file-upload-parse-completeness-pop 0.42s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+.file-upload-parse-page__completeness-check svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.file-upload-parse-page__completeness-check-circle {
+  fill: none;
+  stroke: #52c41a;
+  stroke-width: 1.5;
+  stroke-dasharray: 46;
+  stroke-dashoffset: 46;
+  animation: file-upload-parse-completeness-circle 0.32s ease-out forwards;
+}
+
+.file-upload-parse-page__completeness-check-path {
+  fill: none;
+  stroke: #52c41a;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  animation: file-upload-parse-completeness-check 0.22s ease-out 0.26s forwards;
+}
+
+@keyframes file-upload-parse-completeness-pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes file-upload-parse-completeness-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes file-upload-parse-completeness-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.file-upload-parse-page__next-bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 100;
-  background: #fff;
+  box-sizing: border-box;
+  padding: 8px 20px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+  transform: translateY(calc(100% + 40px));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
 }
 
-.file-upload-parse-page__footer .sidebar-footer {
-  max-width: none;
-  justify-content: flex-end;
-  padding: 12px 24px 16px;
-}
-
-.file-upload-parse-page__footer .sidebar-footer__generate {
-  flex: 0 0 auto;
-  min-width: 160px;
-  padding: 0 24px;
+.file-upload-parse-page__next-bar--visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .file-upload-parse-page__body--embedded {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 20px;
+  padding-top: 20px;
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -102,17 +192,33 @@
   overflow: hidden;
 }
 
+.doc-prep-page__project-info-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #e8eaee;
+}
+
 .doc-prep-page__project-info-shell .file-upload-parse-page__body--embedded {
   flex: 1;
   min-height: 0;
   height: auto;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 20px;
 }
 
-.file-upload-parse-page__footer--embedded {
+.file-upload-parse-page__next-bar--embedded {
   position: static;
   flex-shrink: 0;
+  margin: 0;
+  width: 100%;
+  transform: translateY(24px);
+}
+
+.file-upload-parse-page__next-bar--embedded.file-upload-parse-page__next-bar--visible {
+  transform: translateY(0);
 }
 
 .doc-prep-progress--in-body {
@@ -132,29 +238,18 @@
 
   .file-upload-parse-page__body {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     height: auto;
-    min-height: calc(100vh - 60px);
+    min-height: calc(100vh - 80px);
     overflow: visible;
-  }
-
-  .file-upload-parse-page__upload,
-  .file-upload-parse-page__project,
-  .file-upload-parse-page__template {
-    max-height: none;
-    border-right: none;
-    border-bottom: 1px solid #e5e5e5;
   }
 
   .file-upload-parse-page__upload {
     max-height: 40vh;
   }
 
-  .file-upload-parse-page__template {
-    min-height: 320px;
+  .file-upload-parse-page--with-progress .file-upload-parse-page__body {
+    min-height: calc(100vh - 83px);
   }
 
-  .file-upload-parse-page--with-progress .file-upload-parse-page__body {
-    min-height: calc(100vh - 63px);
-  }
 }

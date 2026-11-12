@@ -45,7 +45,11 @@ type ReviewChecklistPanelProps = {
   onRegenerateSuggestion?: (issueId: string, nextSuggestion: string) => void;
   onFieldLabelClick?: (chapterId: string, field: ChapterFieldView) => void;
   activeMarkId?: string | null;
+  /** 缩略条/字段目录点击时同步筛选 Tab */
+  focusFilter?: ReviewFilter | null;
   onLayoutSettled?: () => void;
+  /** 首次展开时：章节卡片自右向左飞入（贝塞尔缓动） */
+  entranceFromScan?: boolean;
 };
 
 type ChapterListFilter = ReviewFilter;
@@ -68,7 +72,9 @@ export function ReviewChecklistPanel({
   onRegenerateSuggestion,
   onFieldLabelClick,
   activeMarkId = null,
+  focusFilter = null,
   onLayoutSettled,
+  entranceFromScan = false,
 }: ReviewChecklistPanelProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<ReviewFilter>('all');
@@ -84,6 +90,11 @@ export function ReviewChecklistPanel({
     if (!locateRequest) return;
     setFilter(locateRequest.filter);
   }, [locateRequest]);
+
+  useEffect(() => {
+    if (!focusFilter) return;
+    setFilter(focusFilter);
+  }, [focusFilter]);
 
   /** 采纳后列表高度变化时保持滚动位置，避免清单跳动 */
   useLayoutEffect(() => {
@@ -280,13 +291,21 @@ export function ReviewChecklistPanel({
         </div>
       </div>
 
-      <div ref={bodyRef} className="review-checklist__body">
+      <div
+        ref={bodyRef}
+        className={[
+          'review-checklist__body',
+          open && !loading && entranceFromScan ? 'review-checklist__body--card-entrance' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         {loading && <p className="review-checklist__empty">正在定位文档问题…</p>}
         {!loading && visibleChapters.length === 0 && (
           <p className="review-checklist__empty">暂无相关审查项</p>
         )}
         {!loading &&
-          visibleChapters.map((chapter) => (
+          visibleChapters.map((chapter, chapterIndex) => (
             <ChapterReviewCard
               key={chapter.id}
               chapter={chapter}
@@ -306,6 +325,7 @@ export function ReviewChecklistPanel({
               onRegenerateSuggestion={onRegenerateSuggestion}
               onFieldLabelClick={onFieldLabelClick}
               activeMarkId={activeMarkId}
+              entranceDelayMs={entranceFromScan ? chapterIndex * 55 : 0}
             />
           ))}
       </div>

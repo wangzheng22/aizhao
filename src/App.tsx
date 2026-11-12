@@ -4,6 +4,7 @@ import { FileUploadParsePage } from './pages/FileUploadParsePage';
 import { ProjectListPage } from './pages/ProjectListPage';
 import type { ProjectListItem } from './types/projectList';
 import type { DocumentPreparationEntry } from './types/documentWorkflow';
+import { projectListMock } from './data/projectListMock';
 import { buildEntryFromProjectListItem, projectListItemToForm } from './utils/projectListToForm';
 
 type AppView = 'list' | 'upload' | 'review';
@@ -30,6 +31,15 @@ function App() {
     setView('upload');
   }, []);
 
+  const handleStartReview = useCallback(() => {
+    const item =
+      projectListMock.find((row) => row.hasGeneratedDocument) ?? projectListMock[0] ?? null;
+    if (!item) return;
+    setActiveProject(item);
+    setReviewEntry(buildEntryFromProjectListItem(item));
+    setView('review');
+  }, []);
+
   const handleGenerateDocument = useCallback((entry: DocumentPreparationEntry) => {
     setReviewEntry(entry);
     setView('review');
@@ -42,7 +52,13 @@ function App() {
   }, []);
 
   if (view === 'list') {
-    return <ProjectListPage onOpenProject={handleOpenProject} onCreateNew={handleCreateNew} />;
+    return (
+      <ProjectListPage
+        onOpenProject={handleOpenProject}
+        onCreateNew={handleCreateNew}
+        onStartReview={handleStartReview}
+      />
+    );
   }
 
   if (view === 'review' && reviewEntry) {

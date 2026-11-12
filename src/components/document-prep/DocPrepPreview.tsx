@@ -36,16 +36,30 @@ import {
   getChapterDocumentPage,
   resolveChapterIdFromTocTitle,
 } from '../../utils/tocChapterMatch';
-import type { ChapterFieldView } from '../../types/chapterReview';
+import type { ChapterFieldStatus, ChapterFieldView } from '../../types/chapterReview';
+import { buildFieldMinimapEntries, type FieldMinimapEntry } from '../../utils/buildFieldMinimapEntries';
+import { FieldMinimap } from './FieldMinimap';
 import type { UploadFiles } from '../../types/documentWorkflow';
 import { resolveExtractSourceFileName } from '../../utils/resolveExtractSourceFileName';
 import { TextSelectionOverlay } from './TextSelectionOverlay';
 import './DocPrepPreview.css';
 
+/** 文档加载后横向光束上下扫描的时长（与 CSS 动画一致），结束后展开右侧编审清单 */
+const DOC_SCAN_SWEEP_DURATION_MS = 2800;
+
+/** 编审清单章节卡片错峰飞入结束后移除动效 class（约最后一章 delay + 动画时长） */
+const CHECKLIST_CARD_ENTRANCE_CLEAR_MS = 1200;
+
 function filterForAnchorCategory(category?: FieldAnchor['category']): ReviewFilter {
   if (category === 'completeness') return 'missing';
   if (category === 'smart-review') return 'issue';
   return 'all';
+}
+
+function fieldStatusToReviewFilter(status: ChapterFieldStatus): ReviewFilter {
+  if (status === 'missing') return 'missing';
+  if (status === 'issue') return 'issue';
+  return 'ok';
 }
 
 type DocPrepPreviewProps = {
@@ -69,6 +83,8 @@ export function DocPrepPreview({
 }: DocPrepPreviewProps) {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const scanScrollRafRef = useRef<number | null>(null);
+  const scanPhaseTimerRef = useRef<number | null>(null);
   const pdfUrl = documentGenerated ? SAMPLE_PDF_URL : null;
   const { pdf, toc, loading, error } = usePdfDocument(pdfUrl);
   const {
@@ -79,7 +95,8 @@ export function DocPrepPreview({
     issues: smartReviewIssueList,
     loading: smartReviewLoading,
   } = useSmartReviewAnchors(pdf);
-  const [tocOpen, setTocOpen] = useState(true);
+  /** 生成招标文件后默认收起目录，正文全宽展示后再进入扫描 */
+  const [tocOpen, setTocOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [pinnedTocItemId, setPinnedTocItemId] = useState<string | null>(null);
@@ -99,7 +116,23 @@ export function DocPrepPreview({
   const [editedSuggestions, setEditedSuggestions] = useState<Record<string, string>>({});
   const [appliedTexts, setAppliedTexts] = useState<Record<string, string>>({});
   const [selection, setSelection] = useState<EditableSelection | null>(null);
+  const [checklistFilterFromMinimap, setChecklistFilterFromMinimap] = useState<ReviewFilter | null>(
+    null,
+  );
+  const [docScanPhase, setDocScanPhase] = useState<'idle' | 'scanning' | 'done'>('idle');
+  const [editableBodyReady, setEditableBodyReady] = useState(false);
+  const [checklistEntrancePlayed, setChecklistEntrancePlayed] = useState(false);
 
+  const clearScanPhaseTimer = useCallback(() => {
+    if (scanPhaseTimerRef.current !== null) {
+      window.clearTimeout(scanPhaseTimerRef.current);
+      scanPhaseTimerRef.current = null;
+    }
+  }, []);
+
+  const handleEditableDocReady = useCallback(() => {
+    setEditableBodyReady(true);
+  }, []);
   const bumpLayoutVersion = useCallback(() => {
     setLayoutVersion((version) => version + 1);
   }, []);
@@ -157,6 +190,11 @@ export function DocPrepPreview({
     [chapterReviewCards],
   );
 
+  const minimapEntries = useMemo(
+    () => buildFieldMinimapEntries(chapterReviewCards, pdf?.numPages ?? 0),
+    [chapterReviewCards, pdf?.numPages],
+  );
+
   const fieldByMarkId = useMemo(() => {
     const map = new Map<string, ChapterFieldView>();
     chapterFields.forEach((field) => {
@@ -176,6 +214,12 @@ export function DocPrepPreview({
     });
     return map;
   }, [chapterReviewCards]);
+
+  const activeMinimapFieldId = useMemo(() => {
+    if (!activeMarkId) return null;
+    const field = fieldByMarkId.get(activeMarkId);
+    return field?.id ?? null;
+  }, [activeMarkId, fieldByMarkId]);
 
   const activeTocItemId = useMemo(() => {
     if (pinnedTocItemId) return pinnedTocItemId;
@@ -438,6 +482,31 @@ export function DocPrepPreview({
     [onNotice, scrollToPage, syncTocToChapter, scrollReviewToChapter],
   );
 
+  const handleMinimapFieldSelect = useCallback(
+    (entry: FieldMinimapEntry) => {
+      setChecklistFilterFromMinimap(fieldStatusToReviewFilter(entry.status));
+      openReviewPanel();
+      if (entry.field.searchText) {
+        handleFieldLabelClick(entry.chapterId, entry.field);
+        return;
+      }
+      const bodyPage =
+        entry.field.pageHint ?? getChapterDocumentPage(entry.chapterId) ?? undefined;
+      if (bodyPage) scrollToPage(bodyPage);
+      syncTocToChapter(entry.chapterId, bodyPage);
+      scrollReviewToChapter(entry.chapterId, entry.field.id);
+      setActiveMarkId(entry.field.id);
+      setActiveItemId(entry.field.issueId ?? entry.field.id);
+    },
+    [
+      handleFieldLabelClick,
+      openReviewPanel,
+      scrollToPage,
+      syncTocToChapter,
+      scrollReviewToChapter,
+    ],
+  );
+
   const handleIssueMarkClick = useCallback(
     (markId: string) => {
       const field = fieldByMarkId.get(markId);
@@ -501,15 +570,148 @@ export function DocPrepPreview({
   );
 
   useEffect(() => {
-    if (documentGenerated) {
-      setReviewOpen(true);
-    } else {
+    if (!documentGenerated) {
+      clearScanPhaseTimer();
+      setDocScanPhase('idle');
+      setEditableBodyReady(false);
+      setChecklistEntrancePlayed(false);
       setReviewOpen(false);
       setActiveItemId(null);
       setAppliedTexts({});
       setSelection(null);
+      setTocOpen(false);
+      return;
     }
-  }, [documentGenerated]);
+    if (generating || updatingSupplement) {
+      clearScanPhaseTimer();
+      setDocScanPhase('idle');
+      setEditableBodyReady(false);
+      setReviewOpen(false);
+      setTocOpen(false);
+      return;
+    }
+    if (error) {
+      clearScanPhaseTimer();
+      setDocScanPhase('done');
+      return;
+    }
+    if (!pdf || loading) {
+      clearScanPhaseTimer();
+      setDocScanPhase('idle');
+      setEditableBodyReady(false);
+      return;
+    }
+  }, [
+    documentGenerated,
+    generating,
+    updatingSupplement,
+    pdf,
+    loading,
+    error,
+    clearScanPhaseTimer,
+  ]);
+
+  /** 待 PDF 与可编辑正文首帧渲染完成后再开始扫描，避免「只有扫描线没有文档」 */
+  useEffect(() => {
+    if (!documentGenerated || generating || updatingSupplement || error) return;
+    if (!pdf || loading) return;
+    if (!editableBodyReady) return;
+    if (docScanPhase !== 'idle') return;
+
+    setDocScanPhase('scanning');
+    clearScanPhaseTimer();
+    scanPhaseTimerRef.current = window.setTimeout(() => {
+      setDocScanPhase('done');
+      scanPhaseTimerRef.current = null;
+    }, DOC_SCAN_SWEEP_DURATION_MS);
+  }, [
+    documentGenerated,
+    generating,
+    updatingSupplement,
+    pdf,
+    loading,
+    error,
+    editableBodyReady,
+    docScanPhase,
+    clearScanPhaseTimer,
+  ]);
+
+  useEffect(
+    () => () => {
+      clearScanPhaseTimer();
+    },
+    [clearScanPhaseTimer],
+  );
+
+  /** 扫描中收起目录；扫描结束后展示招标文件目录 */
+  useEffect(() => {
+    if (docScanPhase === 'scanning') {
+      setTocOpen(false);
+      return;
+    }
+    if (docScanPhase === 'done') {
+      setTocOpen(true);
+    }
+  }, [docScanPhase]);
+
+  useEffect(() => {
+    if (docScanPhase !== 'scanning' || loading || !pdf) {
+      if (scanScrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scanScrollRafRef.current);
+        scanScrollRafRef.current = null;
+      }
+      return undefined;
+    }
+
+    const pixelsPerFrame = 22;
+
+    const tick = () => {
+      const root = viewerRef.current?.querySelector('.editable-doc') as HTMLElement | null;
+      if (root && root.scrollHeight > root.clientHeight) {
+        const max = root.scrollHeight - root.clientHeight;
+        const next = root.scrollTop + pixelsPerFrame;
+        root.scrollTop = next >= max - 1 ? 0 : next;
+      }
+      scanScrollRafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    scanScrollRafRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (scanScrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scanScrollRafRef.current);
+        scanScrollRafRef.current = null;
+      }
+    };
+  }, [docScanPhase, loading, pdf]);
+
+  /** 扫描结束：正文回到顶部，便于阅读 */
+  useEffect(() => {
+    if (docScanPhase !== 'done') return;
+    const root = viewerRef.current?.querySelector('.editable-doc') as HTMLElement | null;
+    if (root) root.scrollTop = 0;
+  }, [docScanPhase]);
+
+  useEffect(() => {
+    if (!documentGenerated) {
+      setReviewOpen(false);
+      return;
+    }
+    if (generating || updatingSupplement) {
+      setReviewOpen(false);
+      return;
+    }
+    setReviewOpen(docScanPhase === 'done');
+  }, [documentGenerated, generating, updatingSupplement, docScanPhase]);
+
+  useEffect(() => {
+    if (!reviewOpen || docScanPhase !== 'done' || highlightsLoading || checklistEntrancePlayed) {
+      return undefined;
+    }
+    const timerId = window.setTimeout(() => {
+      setChecklistEntrancePlayed(true);
+    }, CHECKLIST_CARD_ENTRANCE_CLEAR_MS);
+    return () => window.clearTimeout(timerId);
+  }, [reviewOpen, docScanPhase, highlightsLoading, checklistEntrancePlayed]);
 
   useEffect(() => {
     if (reviewOpen) return;
@@ -664,7 +866,13 @@ export function DocPrepPreview({
           <>
             <button
               type="button"
-              className={`doc-prep-preview__menu ${tocOpen ? 'doc-prep-preview__menu--active' : ''}`}
+              className={[
+                'doc-prep-preview__menu',
+                tocOpen ? 'doc-prep-preview__menu--active' : '',
+                docScanPhase === 'scanning' ? 'doc-prep-preview__menu--scan-hidden' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               aria-label={tocOpen ? '收起文档目录' : '展开文档目录'}
               aria-expanded={tocOpen}
               onClick={() => setTocOpen((open) => !open)}
@@ -673,12 +881,6 @@ export function DocPrepPreview({
                 <path d="M0 1h16M0 6.5h16M0 12h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </button>
-
-            {!reviewOpen && (
-              <button type="button" className="doc-prep-preview__review-tab" onClick={openReviewPanel}>
-                智能审查
-              </button>
-            )}
 
             <div className="doc-prep-preview__layout">
               <DocumentToc
@@ -694,7 +896,9 @@ export function DocPrepPreview({
                 <div ref={viewerRef} className="doc-prep-preview__viewer">
                   {loading && <div className="doc-prep-preview__status">正在加载招标文件…</div>}
                   {error && (
-                    <div className="doc-prep-preview__status doc-prep-preview__status--error">{error}</div>
+                    <div className="doc-prep-preview__status doc-prep-preview__status--error">
+                      {error}
+                    </div>
                   )}
                   {!loading && !error && pdf && (
                     <EditableDocumentViewer
@@ -705,20 +909,38 @@ export function DocPrepPreview({
                       focusedIssueId={focusedIssueId}
                       onIssueClick={handleIssueMarkClick}
                       onSelectionChange={setSelection}
+                      onReady={handleEditableDocReady}
+                    />
+                  )}
+                  {docScanPhase === 'scanning' && !loading && pdf && (
+                    <div
+                      className="doc-prep-preview__doc-scan"
+                      role="status"
+                      aria-live="polite"
+                      aria-label="正在扫描招标文件"
+                    >
+                      <div className="doc-prep-preview__doc-scan-line" aria-hidden="true" />
+                      <p className="doc-prep-preview__doc-scan-caption">智能扫描招标文件中…</p>
+                    </div>
+                  )}
+                  {selection && (
+                    <TextSelectionOverlay
+                      selection={selection}
+                      workspaceRef={workspaceRef}
+                      viewerRef={viewerRef}
+                      onAiWrite={() => {
+                        onNotice?.('AI改写功能即将上线');
+                      }}
+                    />
+                  )}
+                  {!loading && !error && pdf && docScanPhase !== 'scanning' && (
+                    <FieldMinimap
+                      entries={minimapEntries}
+                      activeFieldId={activeMinimapFieldId}
+                      onFieldSelect={handleMinimapFieldSelect}
                     />
                   )}
                 </div>
-
-                {selection && (
-                  <TextSelectionOverlay
-                    selection={selection}
-                    workspaceRef={workspaceRef}
-                    viewerRef={viewerRef}
-                    onAiWrite={() => {
-                      onNotice?.('AI改写功能即将上线');
-                    }}
-                  />
-                )}
 
                 <ReviewChecklistPanel
                   open={reviewOpen}
@@ -729,6 +951,9 @@ export function DocPrepPreview({
                   locateRequest={locateRequest}
                   chapterLocateRequest={chapterLocateRequest}
                   loading={highlightsLoading}
+                  entranceFromScan={
+                    docScanPhase === 'done' && reviewOpen && !highlightsLoading && !checklistEntrancePlayed
+                  }
                   suggestionEdit={suggestionEdit}
                   onClose={() => setReviewOpen(false)}
                   onCompletenessClick={handleCompletenessIssueClick}
@@ -738,6 +963,7 @@ export function DocPrepPreview({
                   onRegenerateSuggestion={handleRegenerateSuggestion}
                   onFieldLabelClick={handleFieldLabelClick}
                   activeMarkId={activeMarkId}
+                  focusFilter={checklistFilterFromMinimap}
                   onLayoutSettled={bumpLayoutVersion}
                 />
               </div>

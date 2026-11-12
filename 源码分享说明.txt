@@ -1,0 +1,28 @@
+智能招标文件编制 v3 — 源码包
+================================
+
+【环境要求】
+  - Node.js 18+（推荐 20 LTS）
+  - npm 9+
+
+【首次运行】
+  1. 解压本压缩包到任意目录
+  2. 在终端进入解压后的 bidding-doc-prep-v3 目录，执行：
+       npm install
+       npm run dev
+  3. 浏览器打开终端里显示的地址（一般为 http://localhost:5173/ 或 5176）
+
+【常用命令】
+  npm run dev            — 本地开发预览（热更新）
+  npm run build          — 生产构建（输出 dist/）
+  npm run build:share    — 生成静态预览包 share-preview.zip
+  npm run package:source — 重新打包源码 zip
+
+【给同事只看效果、不跑 Node】
+  在项目里执行 npm run build:share，发送 share-preview.zip 即可。
+
+【说明】
+  - 本包不含 node_modules，对方需联网执行 npm install
+  - 示例 PDF：public/documents/；首页资源：public/figma-home/
+
+打包命令：npm run package:source

@@ -132,15 +132,17 @@ function buildFieldView(
     };
   }
 
+  const isBlankExtract = raw.length === 0;
+
   return {
     id: fieldDef.id,
     fieldName: fieldDef.fieldName,
     extractedValue,
-    status: 'ok',
+    status: isBlankExtract ? 'missing' : 'ok',
     markTargetId: fieldDef.id,
     searchText: searchText || undefined,
     pageHint,
-    bases,
+    bases: isBlankExtract ? undefined : bases,
   };
 }
 

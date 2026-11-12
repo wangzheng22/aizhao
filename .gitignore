@@ -3,3 +3,6 @@ dist
 *.local
 .DS_Store
 tsconfig.tsbuildinfo
+share-preview/
+share-preview.zip
+bidding-doc-prep-v3-source.zip

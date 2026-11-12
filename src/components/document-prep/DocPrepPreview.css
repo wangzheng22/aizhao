@@ -44,25 +44,9 @@
   color: #3671ff;
 }
 
-.doc-prep-preview__review-tab {
-  position: absolute;
-  top: 72px;
-  right: 0;
-  z-index: 6;
-  writing-mode: vertical-rl;
-  letter-spacing: 0.12em;
-  height: auto;
-  padding: 14px 8px;
-  font-size: 13px;
-  line-height: 1;
-  color: #fff;
-  background: #3671ff;
-  border-radius: 6px 0 0 6px;
-  box-shadow: 0 2px 8px rgba(54, 113, 255, 0.28);
-}
-
-.doc-prep-preview__review-tab:hover {
-  background: #2f63e0;
+.doc-prep-preview__menu--scan-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .doc-prep-preview__layout {
@@ -87,6 +71,83 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* 生成完成后：细横条上下扫描；正文由 JS 快速向下滚动 */
+.doc-prep-preview__doc-scan {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 16px;
+  pointer-events: none;
+  background: transparent;
+}
+
+/* 注意：不要用 translateY(%) 做位移——百分比相对元素自身高度，1px 高的线几乎不动；用 top % 相对本层高度 */
+.doc-prep-preview__doc-scan-line {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 6%;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 4%,
+    rgba(54, 113, 255, 0.35) 38%,
+    rgba(79, 172, 254, 1) 50%,
+    rgba(54, 113, 255, 0.35) 62%,
+    transparent 96%
+  );
+  box-shadow:
+    0 0 6px rgba(79, 172, 254, 0.65),
+    0 0 14px rgba(54, 113, 255, 0.35);
+  animation: doc-prep-doc-scan-y 2.8s ease-in-out infinite;
+  will-change: top;
+}
+
+.doc-prep-preview__doc-scan-caption {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: #e8f4ff;
+  letter-spacing: 0.02em;
+  background: rgba(14, 26, 52, 0.72);
+  border: 1px solid rgba(79, 172, 254, 0.35);
+  box-shadow: 0 4px 20px rgba(54, 113, 255, 0.2);
+}
+
+@keyframes doc-prep-doc-scan-y {
+  0% {
+    top: 6%;
+    opacity: 0.85;
+  }
+
+  50% {
+    top: 50%;
+    opacity: 1;
+  }
+
+  100% {
+    top: 94%;
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-prep-preview__doc-scan-line {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
 }
 
 .doc-prep-preview__status {

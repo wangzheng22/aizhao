@@ -12,6 +12,14 @@
   margin: 12px 0 8px;
 }
 
+.template-panel__heading:first-child {
+  margin-top: 4px;
+}
+
+.template-panel__search:first-child {
+  margin-top: 4px;
+}
+
 .template-panel__search {
   display: flex;
   align-items: center;
@@ -66,6 +74,45 @@
 .template-panel__card--selected {
   border-color: #3671ff;
   box-shadow: 0 0 0 1px rgba(54, 113, 255, 0.15);
+}
+
+.template-panel__card-flow-wrap {
+  position: relative;
+  padding: 2px;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    #3671ff,
+    #69b1ff,
+    #9254de,
+    #5cdbd3,
+    #3671ff
+  );
+  background-size: 300% 100%;
+  animation: template-panel-flow-border 2.8s linear infinite;
+}
+
+.template-panel__card-flow-wrap .template-panel__card {
+  margin: 0;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.template-panel__card-flow-wrap .template-panel__card--selected {
+  border-color: transparent;
+}
+
+.template-panel__card--flow.template-panel__card--selected {
+  border-color: transparent;
+}
+
+@keyframes template-panel-flow-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
 }
 
 .template-panel__radio {

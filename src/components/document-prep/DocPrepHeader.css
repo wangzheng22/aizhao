@@ -4,12 +4,12 @@
   left: 0;
   right: 0;
   z-index: 200;
-  height: 60px;
+  height: var(--app-topbar-height);
   background: #3671ff;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 var(--app-topbar-padding-x);
 }
 
 .doc-prep-header__leading {

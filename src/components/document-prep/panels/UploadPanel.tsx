@@ -1,40 +1,20 @@
-import { useRef } from 'react';
-import type { UploadFiles } from '../../../types/documentWorkflow';
+import { useEffect, useRef } from 'react';
+import { scrollSectionIntoContainer } from '../../../utils/scrollSectionIntoContainer';
+import {
+  PROJECT_UPLOAD_SECTIONS,
+  type ProjectUploadSectionId,
+} from '../../../constants/projectUploadSections';
+import type { SectionParseStatusMap, UploadFiles } from '../../../types/documentWorkflow';
 import { SidebarTip } from '../shared/SidebarTip';
 import '../DocPrepSidebar.css';
-
-type UploadSection = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-const uploadSections: UploadSection[] = [
-  {
-    id: 'approval',
-    title: '立项批文',
-    description: '官方核准项目实施的法定审批批复文件',
-  },
-  {
-    id: 'quantities',
-    title: '工程量清单',
-    description: '列明分项工程数量，用于计价结算的明细清单',
-  },
-  {
-    id: 'drawings',
-    title: '图纸',
-    description: '标注尺寸工艺，指导施工制作的工程图样',
-  },
-  {
-    id: 'other',
-    title: '其他',
-    description: '本项目设计其他文件',
-  },
-];
 
 type UploadPanelProps = {
   files: UploadFiles;
   onFilesChange: (files: UploadFiles) => void;
+  linkedSectionId?: ProjectUploadSectionId | null;
+  sectionParseStatus?: SectionParseStatusMap;
+  anchorSectionId?: ProjectUploadSectionId | null;
+  onSectionHover?: (sectionId: ProjectUploadSectionId | null, source?: 'upload' | 'form') => void;
 };
 
 function UploadIcon() {
@@ -74,12 +54,22 @@ function DeleteIcon() {
 }
 
 function UploadCard({
-  section,
+  sectionId,
+  title,
+  description,
   files,
+  linkedSectionId = null,
+  isParsing = false,
+  onSectionHover,
   onFilesChange,
 }: {
-  section: UploadSection;
+  sectionId: ProjectUploadSectionId;
+  title: string;
+  description: string;
   files: string[];
+  linkedSectionId?: ProjectUploadSectionId | null;
+  isParsing?: boolean;
+  onSectionHover?: (sectionId: ProjectUploadSectionId | null, source?: 'upload' | 'form') => void;
   onFilesChange: (files: string[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,12 +88,29 @@ function UploadCard({
     onFilesChange(files.filter((_, i) => i !== index));
   };
 
+  const isLinked = linkedSectionId === sectionId;
+  const isDimmed = linkedSectionId != null && !isLinked;
+
   return (
-    <div className={`doc-prep-sidebar__card ${hasFiles ? 'doc-prep-sidebar__card--tall' : ''}`}>
+    <div
+      className={[
+        'doc-prep-sidebar__card',
+        hasFiles ? 'doc-prep-sidebar__card--tall' : '',
+        isLinked ? 'doc-prep-sidebar__card--linked' : '',
+        isDimmed ? 'doc-prep-sidebar__card--dimmed' : '',
+        isParsing ? 'doc-prep-sidebar__card--parsing' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      id={`upload-section-${sectionId}`}
+      data-upload-section={sectionId}
+      onMouseEnter={() => onSectionHover?.(sectionId, 'upload')}
+      onMouseLeave={() => onSectionHover?.(null)}
+    >
       <div className="doc-prep-sidebar__card-head">
         <div className="doc-prep-sidebar__card-info">
-          <h3 className="doc-prep-sidebar__card-title">{section.title}</h3>
-          <p className="doc-prep-sidebar__card-desc">{section.description}</p>
+          <h3 className="doc-prep-sidebar__card-title">{title}</h3>
+          <p className="doc-prep-sidebar__card-desc">{description}</p>
         </div>
         <button
           type="button"
@@ -118,6 +125,7 @@ function UploadCard({
           type="file"
           className="doc-prep-sidebar__input"
           multiple
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           aria-hidden="true"
           tabIndex={-1}
           onChange={(e) => handleFileSelect(e.target.files)}
@@ -146,7 +154,25 @@ function UploadCard({
   );
 }
 
-export function UploadPanel({ files, onFilesChange }: UploadPanelProps) {
+export function UploadPanel({
+  files,
+  onFilesChange,
+  linkedSectionId = null,
+  sectionParseStatus,
+  anchorSectionId = null,
+  onSectionHover,
+}: UploadPanelProps) {
+  const sectionsScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!anchorSectionId || !sectionsScrollRef.current) return;
+    const target = sectionsScrollRef.current.querySelector<HTMLElement>(
+      `[data-upload-section="${anchorSectionId}"]`,
+    );
+    if (!target) return;
+    scrollSectionIntoContainer(sectionsScrollRef.current, target);
+  }, [anchorSectionId]);
+
   const updateSectionFiles = (sectionId: string, sectionFiles: string[]) => {
     onFilesChange({ ...files, [sectionId]: sectionFiles });
   };
@@ -154,18 +180,23 @@ export function UploadPanel({ files, onFilesChange }: UploadPanelProps) {
   return (
     <>
       <SidebarTip
+        className="doc-prep-sidebar__tip--upload"
         lines={[
-          '请上传文件，AI智能分析招标信息。',
-          '文件只能上传jpg/png文件，且大小不超过500kb',
+          '按一、二、三类材料上传文件；行业、评标办法等「通用」字段将从已上传材料中自动汇总至右侧。',
         ]}
       />
 
-      <div className="doc-prep-sidebar__sections">
-        {uploadSections.map((section) => (
+      <div ref={sectionsScrollRef} className="doc-prep-sidebar__sections">
+        {PROJECT_UPLOAD_SECTIONS.map((section) => (
           <UploadCard
             key={section.id}
-            section={section}
+            sectionId={section.id}
+            title={section.title}
+            description={section.description}
             files={files[section.id] ?? []}
+            linkedSectionId={linkedSectionId}
+            isParsing={sectionParseStatus?.[section.id] === 'parsing'}
+            onSectionHover={onSectionHover}
             onFilesChange={(sectionFiles) => updateSectionFiles(section.id, sectionFiles)}
           />
         ))}

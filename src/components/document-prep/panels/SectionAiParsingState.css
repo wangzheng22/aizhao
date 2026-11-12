@@ -1,0 +1,46 @@
+.section-ai-parse {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 4px;
+}
+
+.section-ai-parse__avatar-wrap {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.section-ai-parse__avatar {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  background: transparent;
+  animation: section-ai-parse-float 2.4s ease-in-out infinite;
+}
+
+.section-ai-parse__message {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #666666;
+}
+
+@keyframes section-ai-parse-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}

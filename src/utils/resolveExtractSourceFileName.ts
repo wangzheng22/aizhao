@@ -1,14 +1,13 @@
 import { PROJECT_TITLE } from '../constants/documentPrep';
+import { PROJECT_UPLOAD_SECTION_ORDER } from '../constants/projectUploadSections';
 import type { UploadFiles } from '../types/documentWorkflow';
-
-const UPLOAD_SECTION_ORDER = ['approval', 'quantities', 'drawings', 'other'] as const;
 
 /** 编审清单「上传文件抽提」来源展示用的文件名 */
 export function resolveExtractSourceFileName(
   uploadFiles: UploadFiles,
   projectName?: string,
 ): string {
-  for (const sectionId of UPLOAD_SECTION_ORDER) {
+  for (const sectionId of PROJECT_UPLOAD_SECTION_ORDER) {
     const name = uploadFiles[sectionId]?.[0]?.trim();
     if (name) return name;
   }

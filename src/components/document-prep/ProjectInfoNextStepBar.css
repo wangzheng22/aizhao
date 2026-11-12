@@ -1,0 +1,109 @@
+.project-info-next-step {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+}
+
+.project-info-next-step__pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.project-info-next-step__label {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #666;
+}
+
+.project-info-next-step__template {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: min(360px, 36vw);
+}
+
+.project-info-next-step__file-icon {
+  flex-shrink: 0;
+  color: #3671ff;
+}
+
+.project-info-next-step__badge {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #fff;
+  border-radius: 2px;
+  background: linear-gradient(120deg, #9254de 0%, #3671ff 55%, #5cdbd3 100%);
+  white-space: nowrap;
+}
+
+.project-info-next-step__template-title {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-info-next-step__change {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  line-height: 20px;
+  color: #3671ff;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.project-info-next-step__change:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+.project-info-next-step__generate {
+  flex: 0 0 200px;
+  width: 200px;
+  height: 32px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.project-info-next-step__generate.sidebar-footer__generate {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+@media (max-width: 768px) {
+  .project-info-next-step {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .project-info-next-step__pick {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .project-info-next-step__template {
+    max-width: min(240px, 50vw);
+  }
+}

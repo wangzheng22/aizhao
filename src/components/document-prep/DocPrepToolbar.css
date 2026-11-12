@@ -1,6 +1,6 @@
 .doc-prep-toolbar {
   position: fixed;
-  top: 60px;
+  top: var(--app-topbar-height);
   left: 0;
   right: 0;
   z-index: 150;

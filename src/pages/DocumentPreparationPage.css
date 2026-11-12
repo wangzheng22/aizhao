@@ -5,7 +5,7 @@
 
 .doc-prep-page__body {
   display: flex;
-  padding-top: 60px;
+  padding-top: var(--app-topbar-height);
   height: 100vh;
   overflow: hidden;
   box-sizing: border-box;
@@ -21,12 +21,12 @@
 }
 
 .doc-prep-page--with-progress .doc-prep-page__body {
-  padding-top: 63px;
+  padding-top: calc(var(--app-topbar-height) + 3px);
 }
 
 .doc-prep-progress {
   position: fixed;
-  top: 60px;
+  top: var(--app-topbar-height);
   left: 0;
   right: 0;
   z-index: 201;
@@ -64,7 +64,7 @@
   .doc-prep-page__body {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 60px);
+    min-height: calc(100vh - var(--app-topbar-height));
     overflow: visible;
   }
 

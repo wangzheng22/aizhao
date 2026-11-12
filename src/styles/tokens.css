@@ -1,6 +1,9 @@
 :root {
   --color-text-primary: #333333;
   --font-display: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /** 项目列表 / 文件编制顶栏左右内边距，Logo 起始位置以此为准 */
+  --app-topbar-padding-x: 24px;
+  --app-topbar-height: 50px;
 }
 
 *,
