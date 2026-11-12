@@ -138,7 +138,12 @@ export function DocPrepPreview({
   }, []);
 
   const suggestionEdit: SuggestionEditHandlers = {
-    getSuggestionText: (issueId, original) => editedSuggestions[issueId] ?? original,
+    getSuggestionText: (issueId, original) => {
+      const edited = editedSuggestions[issueId];
+      if (edited === undefined) return original;
+      const trimmed = edited.trim();
+      return trimmed || original;
+    },
     isManualSuggestion: (issueId, original) =>
       issueId in editedSuggestions && editedSuggestions[issueId] !== original,
     onSuggestionSave: (issueId, original, value) => {

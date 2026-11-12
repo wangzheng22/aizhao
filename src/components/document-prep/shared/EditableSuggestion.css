@@ -31,7 +31,8 @@
   font-size: 14px;
   line-height: 22px;
   font-family: inherit;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   white-space: pre-wrap;
   box-sizing: border-box;
 }
@@ -45,9 +46,10 @@
 .editable-suggestion {
   display: block;
   background: transparent;
-  resize: vertical;
+  resize: none;
   overflow: hidden;
   min-height: 22px;
+  max-height: 240px;
   color: #262626;
   cursor: text;
 }

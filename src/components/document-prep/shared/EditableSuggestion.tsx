@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './EditableSuggestion.css';
 
+const SUGGESTION_MAX_HEIGHT_PX = 240;
+
 type EditableSuggestionProps = {
   value: string;
   originalValue: string;
@@ -10,13 +12,25 @@ type EditableSuggestionProps = {
 export function EditableSuggestion({ value, originalValue, onSave }: EditableSuggestionProps) {
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
+  const growRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const shadowRef = useRef<HTMLDivElement>(null);
 
   const syncHeight = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    const textarea = textareaRef.current;
+    const shadow = shadowRef.current;
+    const grow = growRef.current;
+    if (!textarea || !shadow || !grow) return;
+
+    textarea.style.height = '0px';
+    const growWidth = grow.clientWidth;
+    if (growWidth < 8) return;
+
+    const contentHeight = shadow.offsetHeight;
+    const next = Math.min(Math.max(contentHeight, 22), SUGGESTION_MAX_HEIGHT_PX);
+    textarea.style.height = `${next}px`;
+    const overflow = contentHeight > SUGGESTION_MAX_HEIGHT_PX;
+    textarea.style.overflowY = overflow ? 'auto' : 'hidden';
   };
 
   useEffect(() => {
@@ -24,8 +38,16 @@ export function EditableSuggestion({ value, originalValue, onSave }: EditableSug
   }, [value]);
 
   useEffect(() => {
-    syncHeight();
-  }, [draft]);
+    const grow = growRef.current;
+    if (!grow) return;
+
+    const run = () => window.requestAnimationFrame(syncHeight);
+    run();
+
+    const ro = new ResizeObserver(() => run());
+    ro.observe(grow);
+    return () => ro.disconnect();
+  }, [draft, value]);
 
   const handleBlur = () => {
     setFocused(false);
@@ -38,6 +60,8 @@ export function EditableSuggestion({ value, originalValue, onSave }: EditableSug
     event.stopPropagation();
   };
 
+  const displayText = draft || '\u00a0';
+
   return (
     <div
       className={[
@@ -47,16 +71,17 @@ export function EditableSuggestion({ value, originalValue, onSave }: EditableSug
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="editable-suggestion-grow">
+      <div ref={growRef} className="editable-suggestion-grow">
         <textarea
           ref={textareaRef}
           className="editable-suggestion"
           value={draft}
           rows={1}
+          placeholder={originalValue.trim() ? undefined : '暂无修改建议，可点击重新生成'}
           aria-label="修改建议"
           onChange={(event) => {
             setDraft(event.target.value);
-            syncHeight();
+            window.requestAnimationFrame(syncHeight);
           }}
           onFocus={() => setFocused(true)}
           onBlur={handleBlur}
@@ -65,8 +90,8 @@ export function EditableSuggestion({ value, originalValue, onSave }: EditableSug
           onKeyDown={stopPropagation}
           onKeyUp={stopPropagation}
         />
-        <div className="editable-suggestion-shadow" aria-hidden="true">
-          {draft || '\u00a0'}
+        <div ref={shadowRef} className="editable-suggestion-shadow" aria-hidden="true">
+          {displayText}
         </div>
       </div>
     </div>
